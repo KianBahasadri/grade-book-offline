@@ -13,18 +13,22 @@ on:
   push:
     branches: [main]
     paths:
-      - "scripts/**"
+      - "scripts/snapshot.py"
+      - "scripts/build.py"
+      - "scripts/releases.py"
       - "styles/**"
-      - "tests/**"
+      - "tests/test_pipeline.py"
       - "requirements*"
-      - ".github/workflows/**"
+      - ".github/workflows/publish.yml"
   pull_request:
     paths:
-      - "scripts/**"
+      - "scripts/snapshot.py"
+      - "scripts/build.py"
+      - "scripts/releases.py"
       - "styles/**"
-      - "tests/**"
+      - "tests/test_pipeline.py"
       - "requirements*"
-      - ".github/workflows/**"
+      - ".github/workflows/publish.yml"
 
 permissions:
   contents: read
@@ -138,3 +142,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: python -m scripts.releases heartbeat
+
+  website:
+    needs: [check, publish]
+    if: needs.check.outputs.changed == 'true'
+    # GITHUB_TOKEN release events do not start another workflow. Call Pages
+    # directly after publication so every new edition appears on the website.
+    uses: ./.github/workflows/pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

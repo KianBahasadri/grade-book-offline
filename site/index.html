@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Download The GRADE Book for offline reading. Choose PDF, EPUB, Word, plain text, or an offline browser edition. Free, with no account needed.">
+  <meta name="theme-color" content="#173f40">
+  <meta property="og:title" content="The GRADE Book, ready to take with you">
+  <meta property="og:description" content="Free offline editions in PDF, EPUB, Word, and more. Choose a format and start reading.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="{{PREFIX}}favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="{{PREFIX}}style.css">
+  <link rel="canonical" href="{{CANONICAL}}">
+  <script src="{{PREFIX}}site.js" defer></script>
+  <title>{{PAGE_TITLE}}</title>
+</head>
+<body>
+  <a class="skip-link" href="#downloads">Skip to downloads</a>
+  <header class="site-header wrap">
+    <a class="wordmark" href="{{PREFIX}}index.html" aria-label="GRADE Book downloads home">
+      <svg class="book-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M16 8C11 5 6 5 3 6v20c4-1 8 0 13 3 5-3 9-4 13-3V6c-3-1-8-1-13 2Z" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M16 8v21M7 10c2 0 4 .4 6 1.5M7 15c2 0 4 .4 6 1.5M20 11.5c2-1.1 4-1.5 6-1.5M20 16.5c2-1.1 4-1.5 6-1.5" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      <span>GRADE Book <span class="wordmark-sub">Offline library</span></span>
+    </a>
+    <a class="online-link" href="https://book.gradepro.org/">Read the original online <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main>
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> FREE OFFLINE EDITIONS</p>
+        <h1 id="hero-title">The GRADE Book,<br>ready to take<br><em>with you.</em></h1>
+        <p class="hero-description">Keep the guide to assessing evidence and making recommendations close at hand. Download it once, then read at your own pace, wherever you are.</p>
+        <a class="hero-link" href="#downloads">Find your reading format <span aria-hidden="true">↓</span></a>
+        <p class="hero-note">No account needed. Free for noncommercial use.</p>
+      </div>
+      <div class="book-display" aria-hidden="true">
+        <div class="book-shadow"></div>
+        <div class="book-cover">
+          <div class="cover-top">GRADE WORKING GROUP</div>
+          <div class="cover-title">The<br>GRADE<br>Book<span class="cover-rule"></span></div>
+          <div class="cover-bottom"><span>Evidence.<br>Certainty.<br>Decisions.</span><span class="cover-arrow">↗</span></div>
+          <div class="cover-label">UNOFFICIAL OFFLINE EDITION</div>
+        </div>
+        <div class="book-caption">Your reference. Your reading format.</div>
+      </div>
+    </section>
+
+    <section id="downloads" class="download-section" aria-labelledby="downloads-title">
+      <div class="wrap">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">TAKE YOUR PICK</p>
+            <h2 id="downloads-title">How do you like to read?</h2>
+            <p class="section-description">The same book, in a format that works for you.</p>
+          </div>
+          <div class="edition-control">
+            <p class="edition-summary"><span class="edition-dot"></span>{{EDITION_STATUS}} <span class="edition-date">{{EDITION_DATE}}</span></p>
+            {{EDITION_PICKER}}
+          </div>
+        </div>
+        {{EDITION_NOTICE}}
+        <div class="primary-formats">{{PRIMARY_FORMATS}}</div>
+        <div class="secondary-formats">{{SECONDARY_FORMATS}}</div>
+        <p class="download-footnote">All files are in English. Downloads are hosted on GitHub and open directly from these buttons.</p>
+      </div>
+    </section>
+
+    <section class="reading-guide wrap" aria-labelledby="guide-title">
+      <div class="guide-intro">
+        <p class="eyebrow">A LITTLE HELP GETTING STARTED</p>
+        <h2 id="guide-title">Download. <br>Open. Read.</h2>
+        <p>Not sure which to choose?<br><strong>Start with PDF.</strong> It works on most phones, tablets, and computers.</p>
+      </div>
+      <div class="guide-questions">
+        <details>
+          <summary>How do I open my download?<span aria-hidden="true">+</span></summary>
+          <div class="answer">
+            <p>Find the file in your device’s Downloads folder and tap or double-click it.</p>
+            <p><strong>PDF:</strong> open it with your browser or a PDF reader.<br><strong>EPUB:</strong> open it in an EPUB reading app or transfer it to a compatible e-reader.<br><strong>Word:</strong> open it with Word or a compatible document app.</p>
+          </div>
+        </details>
+        <details>
+          <summary>How does the offline website work?<span aria-hidden="true">+</span></summary>
+          <div class="answer">
+            <p>Download the ZIP file, then choose “Extract” or “Unzip.” Open the <strong>grade-book</strong> folder and double-click <strong>index.html</strong>.</p>
+            <p>Keep the folder together: it contains the book and its pictures. You can read it in your browser without an internet connection.</p>
+          </div>
+        </details>
+        <details>
+          <summary>What’s included in this edition?<span aria-hidden="true">+</span></summary>
+          <div class="answer">
+            <p>{{COVERAGE}}</p>
+            <p>Figures, tables, authorship, and references are included in PDF, EPUB, Word, and the offline website. The plain text file includes figure descriptions, but not the pictures.</p>
+            <p>Unfinished chapters and links to the older handbook are listed separately. External websites, videos, and interactive tools still need an internet connection.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Will my copy stay up to date?<span aria-hidden="true">+</span></summary>
+          <div class="answer">
+            <p>A downloaded copy stays as it was on its edition date. We check the original book every week and publish a new edition only when its content changes.</p>
+            <p>Return to this page to get the latest copy. You can also keep an earlier edition for reference.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="archive wrap" aria-labelledby="archive-title">
+      <details>
+        <summary><span><span class="eyebrow">THE SHELF</span><span id="archive-title">Looking for a particular edition?</span></span><span class="archive-count">{{EDITION_COUNT}} <span aria-hidden="true">↓</span></span></summary>
+        <div class="archive-content"><p>Choose an edition date to see its download options.</p><ul>{{ARCHIVE_LINKS}}</ul></div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap">
+    <div class="footer-main">
+      <p class="footer-title">Good evidence.<br>Within reach.</p>
+      <div class="attribution">
+        <p>This is an independent, unofficial download library. The GRADE Book is a publication of the <strong>GRADE Working Group</strong>, edited by Ignacio Neumann and Holger J. Schünemann.</p>
+        <p>Book content is shared under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a> for noncommercial use, with original attribution retained. This project is not endorsed by the authors or Evidence Prime.</p>
+      </div>
+    </div>
+    <div class="footer-links">
+      <span>Read offline. Refer back often.</span>
+      <div><a href="https://book.gradepro.org/about">About the original book</a><a href="{{REPOSITORY_URL}}">About this project</a><a href="{{CHECKSUM_URL}}">File checksums</a></div>
+    </div>
+  </footer>
+</body>
+</html>

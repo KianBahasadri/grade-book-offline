@@ -6,7 +6,11 @@ Unofficial downloads of [The GRADE Book](https://book.gradepro.org/), automatica
 checked for changes every Sunday at **06:23 UTC**. A new release is published only
 when the source content changes.
 
-**[Download the latest edition](https://github.com/KianBahasadri/grade-book-offline/releases/latest)**
+**[Visit the download website](https://kianbahasadri.github.io/grade-book-offline/)**
+
+Choose a format, get help opening it, or select an earlier edition. No GitHub
+account is needed. Downloads are also available in
+[GitHub Releases](https://github.com/KianBahasadri/grade-book-offline/releases/latest).
 
 | Asset | Use |
 | --- | --- |
@@ -65,6 +69,38 @@ Checks also run after changes to the build code on `main`. Pull requests run
 unit tests only and cannot publish. The standard Ubuntu runners are used;
 the workflow needs no paid services or custom secrets. Only the publication
 job receives `contents: write`.
+
+## Download website
+
+The [GitHub Pages website](https://kianbahasadri.github.io/grade-book-offline/)
+is built from complete published releases. It provides direct downloads,
+file sizes, format guidance, and a page for every edition. Download links
+and the edition archive work without JavaScript or browser-side API calls.
+
+`site/` holds the HTML template, styles, and the small edition-picker enhancement.
+`scripts/site.py` generates the website using the GitHub CLI to read release
+metadata. Preview it locally with:
+
+```bash
+python -m scripts.site
+python -m http.server 8000 --directory .work/site
+```
+
+The Pages workflow deploys when website files change, or when manually run:
+
+```bash
+gh workflow run pages.yml
+```
+
+After publishing a new book edition, the book workflow calls the Pages workflow
+directly. This is necessary because releases created with `GITHUB_TOKEN` do not
+trigger another workflow through a `release` event. A weekly check with no book
+changes skips the website deployment too.
+
+Pages must be enabled with **GitHub Actions** as its publishing source. Only
+the website deployment job receives `pages: write` and `id-token: write`;
+no additional secrets are needed. If an edition is removed or manually edited
+on GitHub, rerun `pages.yml` to refresh the website.
 
 ## Build locally
 
