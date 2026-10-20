@@ -5,11 +5,13 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError
 
-from scripts.build import conversion_html, localize_links, validate_html
+from scripts.build import conversion_html, localize_links, validate_cover, validate_html
 from scripts.releases import baseline, release_notes
 from scripts.snapshot import (
     changed,
+    capture_cover,
     clean_fragment,
+    content_fingerprint,
     digest,
     semantic_html,
     validate_catalog,
@@ -61,6 +63,31 @@ class ChangeDetectionTests(unittest.TestCase):
             with patch("scripts.snapshot.download_image", return_value=(b"second", "png")):
                 after = clean_fragment(html, "https://book.gradepro.org/", directory, {})
             self.assertTrue(changed(self.manifest(after), self.manifest(before)))
+
+    def test_official_cover_survives_button_removal_and_tracks_bytes_not_asset_url(self):
+        html = '<button class="about-cover-trigger"><img src="/cover-v1.png" alt="Official cover"></button>'
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            (directory / "assets").mkdir()
+            with patch("scripts.snapshot.download_image", return_value=(b"first cover", "png")):
+                cover = capture_cover(html, directory, {})
+                moved = capture_cover(html.replace("v1", "v2"), directory, {})
+            self.assertEqual((directory / cover["file"]).read_bytes(), b"first cover")
+            self.assertNotIn("<img", clean_fragment(html, "https://book.gradepro.org", directory, {}))
+            self.assertEqual(content_fingerprint("", cover, [], []),
+                             content_fingerprint("", moved, [], []))
+            with patch("scripts.snapshot.download_image", return_value=(b"revised cover", "png")):
+                revised = capture_cover(html, directory, {})
+            self.assertNotEqual(content_fingerprint("", cover, [], []),
+                                content_fingerprint("", revised, [], []))
+            validate_cover(directory, {"cover": cover})
+            (directory / cover["file"]).write_bytes(b"corrupt")
+            with self.assertRaises(ValueError):
+                validate_cover(directory, {"cover": cover})
+            with self.assertRaises(ValueError):
+                capture_cover("<p>Cover unavailable</p>", directory, {})
+            with self.assertRaises(ValueError):
+                validate_cover(directory, {})
 
 
 class CompletenessTests(unittest.TestCase):
@@ -125,6 +152,16 @@ class CompletenessTests(unittest.TestCase):
                 clean_fragment('<img alt="Important figure">', "https://book.gradepro.org",
                                directory, {})
 
+    def test_epub_has_only_its_native_cover_while_word_keeps_cover_and_contents(self):
+        document = '<section class="official-cover"><p><img id="official-cover" src="cover.png"></p>' \
+                   '</section><h1>Book</h1><nav><h1>Contents</h1></nav>'
+        epub = conversion_html(document, keep_cover=False)
+        self.assertFalse(epub.find("img"))
+        self.assertNotIn("Contents", epub.get_text())
+        word = conversion_html(document, keep_contents=True)
+        self.assertEqual(word.img["id"], "official-cover")
+        self.assertIn("Contents", word.get_text())
+
 
 class ReleaseTests(unittest.TestCase):
     def test_api_failure_is_not_treated_as_first_release(self):
@@ -159,6 +196,8 @@ class ReleaseTests(unittest.TestCase):
         previous["content_sha256"] = "b" * 64
         previous["chapters"][0]["content_sha256"] = "y"
         self.assertIn("**Updated:**", release_notes(current, previous))
+        current["cover"] = {"content_sha256": "c" * 64}
+        self.assertIn("official book cover was added", release_notes(current, previous))
 
 
 if __name__ == "__main__":

@@ -2,31 +2,33 @@
 
 import argparse
 import html
+import hashlib
+import io
 import json
 import re
 import shutil
 import subprocess
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote, urlsplit
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "KianBahasadri/grade-book-offline"
 BASE_URL = "https://kianbahasadri.github.io/grade-book-offline/"
 FORMATS = [
-    ("pdf", "PDF", "Easy reading & printing", "The familiar page layout, ready for your phone, computer, or printer.", "A good place to start", "Download PDF"),
-    ("epub", "EPUB", "An e-book that fits your screen", "Adjust the text size and settle in with your e-reader or favorite EPUB reading app.", "For reading apps", "Download EPUB"),
-    ("html", "ZIP", "Offline website", "Read in your browser, with the pictures included. Unzip the folder to get started.", "", "Download website"),
-    ("docx", "DOCX", "Word document", "Open the book in Microsoft Word or a compatible document app.", "", "Download Word file"),
-    ("txt", "TXT", "Plain text", "A small, simple text file. Includes figure descriptions instead of pictures.", "", "Download text"),
+    ("pdf", "PDF", "For most devices & printing", "Download PDF"),
+    ("epub", "EPUB", "For e-readers & reading apps", "Download EPUB"),
+    ("html", "Offline website", "Unzip, then open in your browser", "Download offline website"),
+    ("docx", "Word", "For Word & compatible apps", "Download Word document"),
+    ("txt", "Plain text", "Just the words, in a small file", "Download plain text"),
 ]
 ASSETS = {
     "pdf": "grade-book.pdf", "epub": "grade-book.epub", "html": "grade-book-html.zip",
     "docx": "grade-book.docx", "txt": "grade-book.txt",
 }
-DOWNLOAD_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-DOCUMENT_ICON = '<svg class="format-icon" viewBox="0 0 32 38" fill="none" aria-hidden="true"><path d="M6 2h13l7 7v27H6V2Z" stroke="currentColor" stroke-width="1.3"/><path d="M19 2v8h7M11 18h10M11 23h10M11 28h6" stroke="currentColor" stroke-width="1.3"/></svg>'
-BOOK_ICON = '<svg class="format-icon" viewBox="0 0 32 38" fill="none" aria-hidden="true"><rect x="5" y="2" width="23" height="34" rx="3" stroke="currentColor" stroke-width="1.3"/><path d="M9 2v34M14 10h9M14 15h9M14 20h6M5 30h23" stroke="currentColor" stroke-width="1.3"/></svg>'
+DOWNLOAD_ICON = '<svg aria-hidden="true" focusable="false"><use href="#icon-download"></use></svg>'
 
 
 def github_json(path):
@@ -104,36 +106,21 @@ def edition_path(edition, prefix):
     return prefix + (f"editions/{edition['tag']}/index.html" if not edition["latest"] else "index.html")
 
 
-def render_page(editions, selected, prefix, canonical, repo):
+def render_page(editions, selected, prefix, canonical, repo, cover_file):
     escape = html.escape
-    cards = []
-    for kind, extension, title, description, badge, action in FORMATS:
+    links = []
+    for kind, title, description, action in FORMATS:
         asset = selected["assets"][kind]
-        badge_html = f'<span class="format-tag">{badge}</span>' if badge else ""
-        icon = BOOK_ICON if kind == "epub" else DOCUMENT_ICON
-        cards.append(
-            f'<article class="format-card{" featured" if kind == "pdf" else ""}">'
-            f'<div class="card-heading">{icon}{badge_html}</div>'
-            f'<h3>{title}</h3><p>{description}</p>'
-            f'<a class="download-button" data-format="{kind}" href="{escape(asset["url"], quote=True)}">'
-            f'{action}{DOWNLOAD_ICON}</a>'
-            f'<span class="file-info">{extension} <span aria-hidden="true">·</span> '
-            f'{size_label(asset["size"])}</span></article>')
-    picker = ""
-    if len(editions) > 1:
-        options = []
-        for edition in editions:
-            label = ("Latest · " if edition["latest"] else "") + edition["label"]
-            chosen = " selected" if edition["tag"] == selected["tag"] else ""
-            options.append(f'<option value="{escape(edition_path(edition, prefix), quote=True)}"{chosen}>{escape(label)}</option>')
-        picker = ('<form class="edition-picker" hidden><label for="edition">Choose edition</label>'
-                  '<select id="edition" name="edition">' + "".join(options)
-                  + '</select><button type="submit">View</button></form>')
+        links.append(
+            f'<a class="download-link" data-format="{kind}" aria-label="{action}" '
+            f'href="{escape(asset["url"], quote=True)}"><span><span class="format-name">'
+            f'{title}<span class="file-size">{size_label(asset["size"])}</span></span>'
+            f'<span class="format-hint">{escape(description)}</span></span>{DOWNLOAD_ICON}</a>')
     archive = []
     for edition in editions:
         label = edition["label"] + (" — latest" if edition["latest"] else "")
         current = ' <span class="current-edition">(Viewing this edition)</span>' if edition["tag"] == selected["tag"] else ""
-        archive.append(f'<li><a href="{escape(edition_path(edition, prefix), quote=True)}">{escape(label)}</a>{current}</li>')
+        archive.append(f'<li><a href="{escape(edition_path(edition, prefix), quote=True)}#downloads">{escape(label)}</a>{current}</li>')
     notice = "" if selected["latest"] else (
         '<p class="edition-notice">You’re viewing an earlier edition.'
         f' <a href="{prefix}index.html#downloads">Get the latest edition</a>.</p>')
@@ -142,9 +129,8 @@ def render_page(editions, selected, prefix, canonical, repo):
         "PAGE_TITLE": "The GRADE Book — download for offline reading" if selected["latest"]
         else f"The GRADE Book — {selected['label']} edition",
         "EDITION_STATUS": "Latest edition" if selected["latest"] else "Earlier edition",
-        "EDITION_DATE": escape(selected["date"]), "EDITION_PICKER": picker,
-        "EDITION_NOTICE": notice, "PRIMARY_FORMATS": "".join(cards[:2]),
-        "SECONDARY_FORMATS": "".join(cards[2:]), "ARCHIVE_LINKS": "".join(archive),
+        "EDITION_DATE": escape(selected["label"]), "COVER_FILE": cover_file,
+        "EDITION_NOTICE": notice, "FORMAT_LINKS": "".join(links), "ARCHIVE_LINKS": "".join(archive),
         "EDITION_COUNT": f"{len(editions)} edition{'s' if len(editions) != 1 else ''}",
         "COVERAGE": f"This edition contains the published English chapters of The GRADE Book "
         f"as captured on {escape(selected['date'])}, along with the book’s About page.",
@@ -158,22 +144,49 @@ def render_page(editions, selected, prefix, canonical, repo):
     return result
 
 
-def build_site(editions, output, base_url, repo):
+def published_cover(edition):
+    """Use the release's verified original cover, keeping future site covers in sync."""
+    with urlopen(edition["assets"]["html"]["url"], timeout=90) as response:
+        data = response.read(64 * 1024 * 1024 + 1)
+    if len(data) > 64 * 1024 * 1024:
+        raise ValueError("HTML archive exceeds the website cover download limit")
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        manifest = json.loads(archive.read("grade-book/manifest.json"))
+        cover = manifest.get("cover")
+        if not cover:
+            # The first historical edition predates cover capture.
+            return "official-cover.png", (ROOT / "site/official-cover.png").read_bytes()
+        suffix = Path(cover["file"]).suffix
+        if suffix not in {".png", ".jpg", ".webp", ".avif"}:
+            raise ValueError("Unsupported website cover format")
+        name = "grade-book/" + cover["file"]
+        if archive.getinfo(name).file_size > 32 * 1024 * 1024:
+            raise ValueError("Official cover exceeds the image limit")
+        image = archive.read(name)
+        if hashlib.sha256(image).hexdigest() != cover["content_sha256"]:
+            raise ValueError("Published cover checksum mismatch")
+        return "official-cover" + suffix, image
+
+
+def build_site(editions, output, base_url, repo, cover=None):
     if output.exists() and any(output.iterdir()):
         raise ValueError(f"Output directory must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
-    for name in ["style.css", "site.js", "favicon.svg"]:
+    for name in ["style.css", "site.js", "favicon.svg", "plex-sans-latin.woff2",
+                 "FONT-LICENSE.txt", "LUCIDE-LICENSE.txt"]:
         shutil.copyfile(ROOT / "site" / name, output / name)
+    cover_file, cover_bytes = cover or ("official-cover.png", (ROOT / "site/official-cover.png").read_bytes())
+    (output / cover_file).write_bytes(cover_bytes)
     base_url = base_url.rstrip("/") + "/"
     latest = next(item for item in editions if item["latest"])
-    (output / "index.html").write_text(render_page(editions, latest, "./", base_url, repo))
+    (output / "index.html").write_text(render_page(editions, latest, "./", base_url, repo, cover_file))
     # Keep a permanent page for every edition, including today's latest.
     for edition in editions:
         destination = output / "editions" / edition["tag"]
         destination.mkdir(parents=True)
         canonical = base_url + f"editions/{edition['tag']}/"
         (destination / "index.html").write_text(
-            render_page(editions, edition, "../../", canonical, repo))
+            render_page(editions, edition, "../../", canonical, repo, cover_file))
     (output / ".nojekyll").touch()
     print(f"Built download library with {len(editions)} edition(s): {output}")
 
@@ -186,7 +199,7 @@ def main():
     args = parser.parse_args()
     releases, latest = load_releases(args.repo)
     editions = editions_from_releases(releases, latest, args.repo)
-    build_site(editions, args.output, args.base_url, args.repo)
+    build_site(editions, args.output, args.base_url, args.repo, published_cover(editions[0]))
 
 
 if __name__ == "__main__":

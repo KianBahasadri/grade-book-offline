@@ -5,12 +5,14 @@ import hashlib
 import html
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
 import zipfile
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
+from xml.etree import ElementTree as ET
 
 from playwright.sync_api import sync_playwright
 
@@ -55,6 +57,7 @@ def localize_links(fragments):
 
 def document_html(manifest, fragments, about):
     timestamp = html.escape(manifest["captured_at"])
+    cover = manifest["cover"]
     toc = []
     for chapter in manifest["chapters"]:
         toc.append(f'<li><a href="#{chapter["id"]}">{html.escape(chapter["title"])}</a>'
@@ -81,6 +84,9 @@ def document_html(manifest, fragments, about):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The GRADE Book — offline edition</title>
 <link rel="stylesheet" href="book.css"></head><body>
+<section class="official-cover" aria-label="Official book cover"><p>
+<img id="official-cover" src="{html.escape(cover["file"], quote=True)}"
+alt="{html.escape(cover["alt"], quote=True)}" style="width: 5.9in"></p></section>
 <section class="frontmatter"><h1>The GRADE Book</h1>
 <p>Edited by Ignacio Neumann and Holger J. Schünemann<br>GRADE Working Group</p>
 <div class="edition-note"><p>Unofficial offline edition. Source captured {timestamp}.
@@ -125,10 +131,15 @@ def run(*command):
     subprocess.run(command, check=True, timeout=300)
 
 
-def conversion_html(document):
+def conversion_html(document, *, keep_contents=False, keep_cover=True):
     """Expose headings to Pandoc's EPUB splitter without losing source anchors."""
     conversion = soup(document)
-    conversion.nav.decompose()
+    if keep_contents:
+        conversion.nav.name = "div"
+    else:
+        conversion.nav.decompose()
+    if not keep_cover:
+        conversion.select_one(".official-cover").decompose()
     for index, heading in enumerate(conversion.find_all(re.compile(r"^h[1-6]$"))):
         if not heading.has_attr("id"):
             heading["id"] = f"offline-heading-{index}"
@@ -151,7 +162,20 @@ def conversion_html(document):
     return conversion
 
 
+def validate_cover(directory, manifest):
+    cover = manifest.get("cover")
+    if not cover:
+        raise ValueError("Snapshot has no official cover; capture it again before building")
+    path = (directory / cover["file"]).resolve()
+    if directory.resolve() not in path.parents or not path.is_file():
+        raise ValueError("Official cover is not available offline")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != cover["content_sha256"]:
+        raise ValueError("Official cover does not match the captured original")
+    return path
+
+
 def validate_outputs(output, manifest, expected_words):
+    cover_hash = manifest["cover"]["content_sha256"]
     with zipfile.ZipFile(output / "grade-book.epub") as epub:
         if epub.read("mimetype") != b"application/epub+zip":
             raise ValueError("Invalid EPUB mimetype")
@@ -166,9 +190,31 @@ def validate_outputs(output, manifest, expected_words):
             chapter["images"] for chapter in manifest["chapters"]
         ):
             raise ValueError("EPUB has lost all images")
+        container = ET.fromstring(epub.read("META-INF/container.xml"))
+        opf_name = container.find(".//{*}rootfile").attrib["full-path"]
+        opf = ET.fromstring(epub.read(opf_name))
+        covers = [item for item in opf.findall(".//{*}manifest/{*}item")
+                  if "cover-image" in item.get("properties", "").split()]
+        if len(covers) != 1:
+            raise ValueError("EPUB does not identify its cover for reading apps")
+        cover_name = posixpath.normpath(posixpath.join(
+            posixpath.dirname(opf_name), unquote(covers[0].attrib["href"])))
+        if hashlib.sha256(epub.read(cover_name)).hexdigest() != cover_hash:
+            raise ValueError("EPUB has lost the official cover")
     with zipfile.ZipFile(output / "grade-book.docx") as docx:
         if "word/document.xml" not in docx.namelist() or docx.testzip():
             raise ValueError("Invalid DOCX")
+        if not any(hashlib.sha256(docx.read(name)).hexdigest() == cover_hash
+                   for name in docx.namelist() if name.startswith("word/media/")):
+            raise ValueError("DOCX has lost the official cover")
+        body = ET.fromstring(docx.read("word/document.xml")).find(".//{*}body")
+        if body[0].find(".//{*}drawing") is None:
+            raise ValueError("DOCX does not start with the cover")
+    pdf_images = subprocess.check_output(
+        ["pdfimages", "-f", "1", "-l", "1", "-list", str(output / "grade-book.pdf")],
+        text=True, timeout=60)
+    if not re.search(r"^\s*1\s+\d+\s+image\s+", pdf_images, re.MULTILINE):
+        raise ValueError("PDF does not start with a cover image")
     pdf_text = subprocess.check_output(
         ["pdftotext", str(output / "grade-book.pdf"), "-"], text=True, timeout=60)
     plain_text = (output / "grade-book.txt").read_text()
@@ -193,6 +239,7 @@ def build(snapshot, output, browser_path=None):
     shutil.copytree(snapshot / "assets", book / "assets")
     shutil.copyfile(ROOT / "styles/book.css", book / "book.css")
     manifest = json.loads((snapshot / "manifest.json").read_text())
+    cover_path = validate_cover(book, manifest)
     fragments = {chapter["id"]: (snapshot / chapter["file"]).read_text()
                  for chapter in manifest["chapters"]}
     fragments = localize_links(fragments)
@@ -232,7 +279,7 @@ def build(snapshot, output, browser_path=None):
         browser.close()
 
     # Pandoc creates its own navigation; keep the human-readable contents in HTML/PDF.
-    conversion = conversion_html(document)
+    conversion = conversion_html(document, keep_cover=False)
     input_file = output / "conversion.html"
     input_file.write_text(str(conversion), encoding="utf-8")
     common = [
@@ -243,8 +290,12 @@ def build(snapshot, output, browser_path=None):
     ]
     run(*common, "--to=epub3", "--toc", "--toc-depth=2",
         "--epub-chapter-level=1", "--epub-title-page=false",
+        f"--epub-cover-image={cover_path}",
         f"--css={book / 'book.css'}", "-o", str(output / "grade-book.epub"))
-    run(*common, "--to=docx", "--toc", "-o", str(output / "grade-book.docx"))
+    # Keep human-readable contents in Word and put its cover before all metadata.
+    input_file.write_text(str(conversion_html(document, keep_contents=True)), encoding="utf-8")
+    run(*common, "--to=docx", f"--lua-filter={ROOT / 'scripts/docx-cover.lua'}",
+        "-o", str(output / "grade-book.docx"))
     run(*common, "--to=plain", "--wrap=none", "-o", str(output / "grade-book.txt"))
     input_file.unlink()
     with zipfile.ZipFile(output / "grade-book-html.zip", "w", zipfile.ZIP_DEFLATED) as archive:

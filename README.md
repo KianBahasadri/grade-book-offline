@@ -27,7 +27,8 @@ account is needed. Downloads are also available in
 The editions contain the **published English chapters** in the order shown on
 the book's homepage, plus its About page. Chapter authors, figures, tables,
 rendered citations, bibliographies, and additional-resource links are retained.
-PDF, EPUB, DOCX, and HTML include local copies of the figures.
+PDF, EPUB, DOCX, and HTML begin with the original official cover and include local
+copies of the figures. The EPUB also identifies the cover for e-reader libraries.
 
 Unfinished catalog entries and entries linking to the older GRADE handbook are
 listed separately; their content is not included. External websites, videos,
@@ -39,7 +40,7 @@ The weekly job renders the source with Chromium and checks the public chapter
 API against the rendered content. It compares a normalized content fingerprint
 with the manifest attached to the **last successfully published release**.
 
-Text, figures (including replacements at the same URL), references, author
+Text, the official cover, figures (including replacements at the same URL), references, author
 attribution, chapter ordering, and catalog changes trigger publication.
 Capture timestamps, upstream “Last modified” dates, editor IDs, and presentation
 styling do not. A failed check or conversion never advances the baseline.
@@ -73,13 +74,16 @@ job receives `contents: write`.
 ## Download website
 
 The [GitHub Pages website](https://kianbahasadri.github.io/grade-book-offline/)
-is built from complete published releases. It provides direct downloads,
-file sizes, format guidance, and a page for every edition. Download links
-and the edition archive work without JavaScript or browser-side API calls.
+is built from complete published releases. Click the official cover to open a
+3D book and choose a download. Other editions and reading help are below it.
+The layout adapts to phones, supports keyboard navigation and reduced motion,
+and provides light and dark themes. Downloads remain visible without JavaScript.
+Each edition has a permanent page with links to its own files.
 
-`site/` holds the HTML template, styles, and the small edition-picker enhancement.
+`site/` holds the HTML template, styles, book interaction, and locally hosted font.
 `scripts/site.py` generates the website using the GitHub CLI to read release
-metadata. Preview it locally with:
+metadata. It takes the cover from the latest release's verified HTML archive.
+Preview it locally with:
 
 ```bash
 python -m scripts.site

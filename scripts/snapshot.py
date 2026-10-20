@@ -116,6 +116,33 @@ def clean_fragment(html, page_url, directory, image_cache):
     return str(document)
 
 
+def capture_cover(about_html, directory, image_cache):
+    """Keep the official cover before interactive About-page controls are removed."""
+    images = soup(about_html).select(".about-cover-trigger img")
+    if len(images) != 1 or not images[0].get("src"):
+        raise ValueError("The official book cover is missing or ambiguous")
+    image = images[0]
+    source = urljoin(SOURCE + "/about", image["src"])
+    fragment = clean_fragment(str(image), SOURCE + "/about", directory, image_cache)
+    filename = soup(fragment).img["src"]
+    return {
+        "file": filename, "source_url": source,
+        "content_sha256": hashlib.sha256((directory / filename).read_bytes()).hexdigest(),
+        "alt": image.get("alt") or "Official cover of The GRADE Book",
+    }
+
+
+def content_fingerprint(about, cover, chapters, excluded):
+    # Use cover bytes and description, not the asset URL's deployment hash.
+    return digest({
+        "schema": SCHEMA, "about": semantic_html(about),
+        "cover": {key: cover[key] for key in ("content_sha256", "alt")},
+        "chapters": [{key: chapter[key] for key in ("id", "title", "group", "content_sha256")}
+                     for chapter in chapters],
+        "excluded": excluded,
+    })
+
+
 def validate_catalog(catalog, ordered):
     if not isinstance(catalog.get("guidelines"), list) or not ordered:
         raise ValueError("Missing or empty chapter catalog")
@@ -234,7 +261,9 @@ def capture(directory, browser_path=None):
 
         navigate(page, SOURCE + "/about?lng=en")
         page.locator(".about-content").wait_for()
-        about = clean_fragment(page.locator(".about-content").inner_html(),
+        about_html = page.locator(".about-content").inner_html()
+        cover = capture_cover(about_html, directory, images)
+        about = clean_fragment(about_html,
                                SOURCE + "/about", directory, images)
         if "BY-NC-ND" not in soup(about).get_text():
             raise ValueError("Upstream license notice changed; review before publishing")
@@ -281,17 +310,12 @@ def capture(directory, browser_path=None):
     )
     # Download bytes are in the image filenames; replacing an image at the same
     # URL therefore changes the fingerprint. Display dates and build time do not.
-    content = {
-        "schema": SCHEMA, "about": semantic_html(about),
-        "chapters": [{k: chapter[k] for k in ("id", "title", "group", "content_sha256")}
-                     for chapter in chapters],
-        "excluded": excluded,
-    }
     manifest = {
         "schema": SCHEMA, "source": SOURCE, "language": "en",
         "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "content_sha256": digest(content), "about_sha256": digest(content["about"]),
-        "chapters": chapters, "excluded": excluded,
+        "content_sha256": content_fingerprint(about, cover, chapters, excluded),
+        "about_sha256": digest(semantic_html(about)),
+        "cover": cover, "chapters": chapters, "excluded": excluded,
     }
     (directory / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

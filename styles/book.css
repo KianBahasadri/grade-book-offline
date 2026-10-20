@@ -22,6 +22,9 @@ tr { break-inside: avoid; }
 thead { display: table-header-group; }
 blockquote { margin-left: 0; padding-left: 1em; border-left: 3px solid #8db5c5; }
 .frontmatter, .edition-note { color: #354c58; }
+.official-cover { text-align: center; margin-bottom: 4rem; }
+.official-cover p { margin: 0; }
+.official-cover img { display: block; margin: auto; width: 100% !important; max-width: 42rem !important; }
 .edition-note { border-left: 3px solid #8db5c5; padding-left: 1rem; font-size: 0.9em; }
 .source-link, .references-list__reference { font-size: 0.88em; }
 .references-list__reference { margin-bottom: 0.7em; }
@@ -35,6 +38,8 @@ nav li { margin: 0.3em 0; }
   body { max-width: none; margin: 0; padding: 0; font-size: 10pt; line-height: 1.4; }
   h1 { font-size: 23pt; } h2 { font-size: 16pt; } h3 { font-size: 12pt; }
   .chapter, .about, .coverage, nav { break-before: page; margin-top: 0; }
+  .official-cover { break-after: page; margin: 0; }
+  .official-cover img { max-height: 250mm !important; width: auto !important; }
   img { max-height: 225mm !important; break-inside: avoid; }
   a { color: inherit; text-decoration: none; }
   * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }

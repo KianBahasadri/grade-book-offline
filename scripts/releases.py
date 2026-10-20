@@ -70,7 +70,7 @@ def release_notes(current, previous):
         "Download **grade-book.epub** for an e-reader, **grade-book.pdf** for printing,",
         "**grade-book-html.zip** for a browser (extract it and open `index.html`),",
         "**grade-book.docx** for Word, or **grade-book.txt** for text only.",
-        "Figures are embedded in EPUB, PDF, DOCX and the HTML archive.",
+        "The official cover and figures are embedded in EPUB, PDF, DOCX and the HTML archive.",
         "",
     ]
     if previous is None:
@@ -78,10 +78,14 @@ def release_notes(current, previous):
     elif previous["content_sha256"] == current["content_sha256"]:
         lines.append("Manual rebuild of unchanged source content.")
     else:
+        cover_changed = (current.get("cover", {}).get("content_sha256")
+                         != previous.get("cover", {}).get("content_sha256"))
+        if cover_changed:
+            lines.append("The official book cover was added or updated in every illustrated format.")
         for label, titles in [("Added", added), ("Updated", updated), ("Removed", removed)]:
             if titles:
                 lines.extend([f"**{label}:**", "", *[f"- {title}" for title in titles], ""])
-        if not (added or updated or removed):
+        if not (added or updated or removed or cover_changed):
             lines.append("The book's catalog, ordering, attribution, or About page changed.")
     lines.extend([
         "",

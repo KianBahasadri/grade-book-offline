@@ -15,6 +15,7 @@ on:
     paths:
       - "scripts/snapshot.py"
       - "scripts/build.py"
+      - "scripts/docx-cover.lua"
       - "scripts/releases.py"
       - "styles/**"
       - "tests/test_pipeline.py"
@@ -24,6 +25,7 @@ on:
     paths:
       - "scripts/snapshot.py"
       - "scripts/build.py"
+      - "scripts/docx-cover.lua"
       - "scripts/releases.py"
       - "styles/**"
       - "tests/test_pipeline.py"

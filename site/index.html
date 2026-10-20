@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Download The GRADE Book for offline reading. Choose PDF, EPUB, Word, plain text, or an offline browser edition. Free, with no account needed.">
-  <meta name="theme-color" content="#173f40">
-  <meta property="og:title" content="The GRADE Book, ready to take with you">
-  <meta property="og:description" content="Free offline editions in PDF, EPUB, Word, and more. Choose a format and start reading.">
+  <meta name="description" content="Open The GRADE Book and choose your offline edition. Free PDF, EPUB, Word, plain text, and offline website downloads.">
+  <meta name="theme-color" content="#ecefec">
+  <meta property="og:title" content="The GRADE Book — offline editions">
+  <meta property="og:description" content="Open the book. Take a copy with you.">
   <meta property="og:type" content="website">
   <link rel="icon" href="{{PREFIX}}favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="{{PREFIX}}style.css">
@@ -16,117 +16,113 @@
 </head>
 <body>
   <a class="skip-link" href="#downloads">Skip to downloads</a>
-  <header class="site-header wrap">
-    <a class="wordmark" href="{{PREFIX}}index.html" aria-label="GRADE Book downloads home">
-      <svg class="book-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <path d="M16 8C11 5 6 5 3 6v20c4-1 8 0 13 3 5-3 9-4 13-3V6c-3-1-8-1-13 2Z" stroke="currentColor" stroke-width="1.6"/>
-        <path d="M16 8v21M7 10c2 0 4 .4 6 1.5M7 15c2 0 4 .4 6 1.5M20 11.5c2-1.1 4-1.5 6-1.5M20 16.5c2-1.1 4-1.5 6-1.5" stroke="currentColor" stroke-width="1.6"/>
-      </svg>
-      <span>GRADE Book <span class="wordmark-sub">Offline library</span></span>
-    </a>
-    <a class="online-link" href="https://book.gradepro.org/">Read the original online <span aria-hidden="true">↗</span></a>
+  <header class="site-header">
+    <a class="wordmark" href="{{PREFIX}}index.html">The GRADE Book<span>Offline editions</span></a>
+    <div class="page-utilities" hidden>
+      <button class="search-launcher" type="button" aria-label="Open search and commands" aria-keyshortcuts="Control+k Meta+k Control+Space" data-tooltip="Open search and commands">
+        <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
+      </button>
+      <button class="icon-button theme-toggle" type="button" aria-label="Switch to dark theme" data-tooltip="Switch to dark theme">
+        <svg aria-hidden="true" focusable="false"><use href="#icon-moon"></use></svg>
+      </button>
+    </div>
   </header>
-
   <main>
-    <section class="hero wrap" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow"><span></span> FREE OFFLINE EDITIONS</p>
-        <h1 id="hero-title">The GRADE Book,<br>ready to take<br><em>with you.</em></h1>
-        <p class="hero-description">Keep the guide to assessing evidence and making recommendations close at hand. Download it once, then read at your own pace, wherever you are.</p>
-        <a class="hero-link" href="#downloads">Find your reading format <span aria-hidden="true">↓</span></a>
-        <p class="hero-note">No account needed. Free for noncommercial use.</p>
-      </div>
-      <div class="book-display" aria-hidden="true">
-        <div class="book-shadow"></div>
-        <div class="book-cover">
-          <div class="cover-top">GRADE WORKING GROUP</div>
-          <div class="cover-title">The<br>GRADE<br>Book<span class="cover-rule"></span></div>
-          <div class="cover-bottom"><span>Evidence.<br>Certainty.<br>Decisions.</span><span class="cover-arrow">↗</span></div>
-          <div class="cover-label">UNOFFICIAL OFFLINE EDITION</div>
+    <h1 class="sr-only">The GRADE Book. Download an offline edition.</h1>
+    <div class="book-stage">
+      <div class="book" id="book">
+        <div class="back-board" aria-hidden="true"></div>
+        <div class="page-edges" aria-hidden="true"></div>
+        <div class="book-spine" aria-hidden="true"><span>The GRADE Book</span></div>
+        <section class="download-page paper" id="downloads" aria-labelledby="downloads-title" tabindex="-1">
+          <div class="page-heading">
+            <p class="overline">YOURS TO KEEP</p>
+            <button class="icon-button close-book" type="button" aria-label="Close book" data-tooltip="Close book" hidden>
+              <svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg>
+            </button>
+          </div>
+          <h2 id="downloads-title">Take a copy.</h2>
+          <p class="page-intro">Choose how you like to read.</p>
+          {{EDITION_NOTICE}}
+          <div class="format-list">{{FORMAT_LINKS}}</div>
+          <div class="page-colophon">
+            <p>{{EDITION_STATUS}} · {{EDITION_DATE}}</p>
+            <p>English · Free for noncommercial use</p>
+          </div>
+        </section>
+        <div class="front-board">
+          <div class="cover-front">
+            <button type="button" class="cover-opener" aria-label="Open The GRADE Book to choose a download" aria-expanded="false" aria-controls="downloads" aria-describedby="book-instruction">
+              <img src="{{PREFIX}}{{COVER_FILE}}" width="866" height="1174" alt="The official blue cover of The GRADE Book" fetchpriority="high">
+            </button>
+          </div>
+          <div class="cover-inside paper" aria-hidden="true">
+            <p class="overline">GRADE WORKING GROUP</p>
+            <div class="inside-title">The<br>GRADE<br>Book</div>
+            <p class="inside-subtitle">Grading of Recommendations,<br>Assessment, Development<br>and Evaluation</p>
+            <div class="inside-colophon">
+              <p>Edited by Ignacio Neumann<br>and Holger J. Schünemann</p>
+              <span>Unofficial offline edition</span>
+            </div>
+          </div>
         </div>
-        <div class="book-caption">Your reference. Your reading format.</div>
       </div>
-    </section>
-
-    <section id="downloads" class="download-section" aria-labelledby="downloads-title">
-      <div class="wrap">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">TAKE YOUR PICK</p>
-            <h2 id="downloads-title">How do you like to read?</h2>
-            <p class="section-description">The same book, in a format that works for you.</p>
-          </div>
-          <div class="edition-control">
-            <p class="edition-summary"><span class="edition-dot"></span>{{EDITION_STATUS}} <span class="edition-date">{{EDITION_DATE}}</span></p>
-            {{EDITION_PICKER}}
-          </div>
+    </div>
+    <div class="book-caption">
+      <button type="button" class="open-label" hidden>Open the book <svg aria-hidden="true" focusable="false"><use href="#icon-arrow-right"></use></svg></button>
+      <p id="book-instruction">{{EDITION_DATE}} <span aria-hidden="true">/</span> English</p>
+    </div>
+    <div class="support">
+      <details id="editions">
+        <summary>Other editions <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
+        <div class="support-content">
+          <h2>Choose an edition</h2>
+          <p>Each date has its own complete set of downloads.</p>
+          <ul class="edition-list">{{ARCHIVE_LINKS}}</ul>
         </div>
-        {{EDITION_NOTICE}}
-        <div class="primary-formats">{{PRIMARY_FORMATS}}</div>
-        <div class="secondary-formats">{{SECONDARY_FORMATS}}</div>
-        <p class="download-footnote">All files are in English. Downloads are hosted on GitHub and open directly from these buttons.</p>
-      </div>
-    </section>
-
-    <section class="reading-guide wrap" aria-labelledby="guide-title">
-      <div class="guide-intro">
-        <p class="eyebrow">A LITTLE HELP GETTING STARTED</p>
-        <h2 id="guide-title">Download. <br>Open. Read.</h2>
-        <p>Not sure which to choose?<br><strong>Start with PDF.</strong> It works on most phones, tablets, and computers.</p>
-      </div>
-      <div class="guide-questions">
-        <details>
-          <summary>How do I open my download?<span aria-hidden="true">+</span></summary>
-          <div class="answer">
-            <p>Find the file in your device’s Downloads folder and tap or double-click it.</p>
-            <p><strong>PDF:</strong> open it with your browser or a PDF reader.<br><strong>EPUB:</strong> open it in an EPUB reading app or transfer it to a compatible e-reader.<br><strong>Word:</strong> open it with Word or a compatible document app.</p>
-          </div>
-        </details>
-        <details>
-          <summary>How does the offline website work?<span aria-hidden="true">+</span></summary>
-          <div class="answer">
-            <p>Download the ZIP file, then choose “Extract” or “Unzip.” Open the <strong>grade-book</strong> folder and double-click <strong>index.html</strong>.</p>
-            <p>Keep the folder together: it contains the book and its pictures. You can read it in your browser without an internet connection.</p>
-          </div>
-        </details>
-        <details>
-          <summary>What’s included in this edition?<span aria-hidden="true">+</span></summary>
-          <div class="answer">
-            <p>{{COVERAGE}}</p>
-            <p>Figures, tables, authorship, and references are included in PDF, EPUB, Word, and the offline website. The plain text file includes figure descriptions, but not the pictures.</p>
-            <p>Unfinished chapters and links to the older handbook are listed separately. External websites, videos, and interactive tools still need an internet connection.</p>
-          </div>
-        </details>
-        <details>
-          <summary>Will my copy stay up to date?<span aria-hidden="true">+</span></summary>
-          <div class="answer">
-            <p>A downloaded copy stays as it was on its edition date. We check the original book every week and publish a new edition only when its content changes.</p>
-            <p>Return to this page to get the latest copy. You can also keep an earlier edition for reference.</p>
-          </div>
-        </details>
-      </div>
-    </section>
-
-    <section class="archive wrap" aria-labelledby="archive-title">
-      <details>
-        <summary><span><span class="eyebrow">THE SHELF</span><span id="archive-title">Looking for a particular edition?</span></span><span class="archive-count">{{EDITION_COUNT}} <span aria-hidden="true">↓</span></span></summary>
-        <div class="archive-content"><p>Choose an edition date to see its download options.</p><ul>{{ARCHIVE_LINKS}}</ul></div>
       </details>
-    </section>
+      <details id="about">
+        <summary>About &amp; help <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
+        <div class="support-content">
+          <h2>Read it your way</h2>
+          <p><strong>PDF</strong> opens on most phones and computers. <strong>EPUB</strong> lets you adjust the text in a reading app. For the <strong>offline website</strong>, unzip the download and open <strong>grade-book/index.html</strong>. Keep its folder together.</p>
+          <p>{{COVERAGE}} Figures, tables, references, and original attribution are retained. Plain text includes image descriptions. Unfinished chapters and older-handbook links are listed separately; external websites and videos still need a connection.</p>
+          <p>We check weekly and publish only when the source changes. Return here for a newer copy.</p>
+          <p>An independent project. The original book is published by the GRADE Working Group and edited by Ignacio Neumann and Holger J. Schünemann. This project is not endorsed by the authors or Evidence Prime.</p>
+          <p>Book and cover: <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a>. <a href="{{REPOSITORY_URL}}">Project source</a> · <a href="{{CHECKSUM_URL}}">File checksums</a></p>
+        </div>
+      </details>
+    </div>
   </main>
-
-  <footer class="site-footer wrap">
-    <div class="footer-main">
-      <p class="footer-title">Good evidence.<br>Within reach.</p>
-      <div class="attribution">
-        <p>This is an independent, unofficial download library. The GRADE Book is a publication of the <strong>GRADE Working Group</strong>, edited by Ignacio Neumann and Holger J. Schünemann.</p>
-        <p>Book content is shared under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a> for noncommercial use, with original attribution retained. This project is not endorsed by the authors or Evidence Prime.</p>
-      </div>
-    </div>
-    <div class="footer-links">
-      <span>Read offline. Refer back often.</span>
-      <div><a href="https://book.gradepro.org/about">About the original book</a><a href="{{REPOSITORY_URL}}">About this project</a><a href="{{CHECKSUM_URL}}">File checksums</a></div>
-    </div>
+  <footer class="site-footer">
+    <span>An independent offline edition.</span>
+    <a href="https://book.gradepro.org/">Read the original online <svg aria-hidden="true" focusable="false"><use href="#icon-arrow-up-right"></use></svg></a>
   </footer>
+  <dialog class="spotlight" id="spotlight" aria-labelledby="search-label">
+    <div class="spotlight-input">
+      <label class="sr-only" id="search-label" for="command-query">Search commands</label>
+      <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
+      <input id="command-query" type="text" placeholder="Search commands" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="command-results">
+    </div>
+    <div id="command-results" role="listbox" aria-label="Commands"></div>
+    <p class="empty-results" hidden>No matching commands</p>
+  </dialog>
+  <dialog id="shortcuts" aria-labelledby="shortcuts-title">
+    <div class="dialog-heading"><h2 id="shortcuts-title">Keyboard shortcuts</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close" data-tooltip="Close"><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button></div>
+    <dl class="shortcut-list"></dl>
+  </dialog>
+  <div id="tooltip" role="tooltip" hidden></div>
+  <svg class="icon-sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></symbol>
+      <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+      <symbol id="icon-x" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></symbol>
+      <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></symbol>
+      <symbol id="icon-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10M7 17 17 7"/></symbol>
+    </defs>
+  </svg>
 </body>
 </html>

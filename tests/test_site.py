@@ -1,11 +1,15 @@
 import copy
+import hashlib
+import io
+import json
+import zipfile
 import tempfile
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.site import ASSETS, BASE_URL, REPO, build_site, editions_from_releases, load_releases
+from scripts.site import ASSETS, BASE_URL, REPO, build_site, editions_from_releases, load_releases, published_cover
 
 
 def release(tag="edition-2026-10-20-aaaa-1.1", published="2026-10-20T18:00:00Z"):
@@ -102,6 +106,25 @@ class WebsiteTests(unittest.TestCase):
             self.assertIn("You’re viewing an earlier edition", earlier)
             self.assertIn("Get the latest edition", earlier)
             self.assertNotIn("You’re viewing an earlier edition", (output / "index.html").read_text())
+
+    def test_site_uses_verified_cover_from_published_book(self):
+        current = release()
+        edition = editions_from_releases([current], current["tag_name"], REPO)[0]
+        image = b"original cover bytes"
+        for corrupted in [False, True]:
+            content = io.BytesIO()
+            with zipfile.ZipFile(content, "w") as archive:
+                archive.writestr("grade-book/assets/cover.png", image)
+                archive.writestr("grade-book/manifest.json", json.dumps({"cover": {
+                    "file": "assets/cover.png",
+                    "content_sha256": "0" * 64 if corrupted else hashlib.sha256(image).hexdigest(),
+                }}))
+            with patch("scripts.site.urlopen", return_value=io.BytesIO(content.getvalue())):
+                if corrupted:
+                    with self.assertRaises(ValueError):
+                        published_cover(edition)
+                else:
+                    self.assertEqual(published_cover(edition), ("official-cover.png", image))
 
     def test_releases_are_paginated_and_api_errors_are_not_swallowed(self):
         current = release()

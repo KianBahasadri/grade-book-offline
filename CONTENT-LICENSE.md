@@ -1,6 +1,6 @@
 # Book content and attribution
 
-The GRADE Book and its figures, tables, references, and other content belong to
+The GRADE Book and its official cover, figures, tables, references, and other content belong to
 their original authors and rights holders. They are **not** covered by this
 repository's software license.
 
@@ -28,3 +28,9 @@ Only published English chapters in the current GRADE Book are included. Entries
 that link to the older handbook and unfinished entries are listed separately.
 External websites and videos remain online links. The TXT edition contains text
 and figure descriptions, rather than the figures themselves.
+
+The website’s bundled `official-cover.png` is the original cover asset linked by
+the source’s About page, captured on 20 October 2026. New website builds take the
+cover from the latest published offline edition. The image is retained unchanged;
+the website presents it on a three-dimensional book. IBM Plex Sans is distributed
+under its bundled OFL license, and Lucide icons under their bundled license.
