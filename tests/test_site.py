@@ -8,6 +8,7 @@ import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 from scripts.site import ASSETS, BASE_URL, REPO, build_site, editions_from_releases, load_releases, published_cover
 
@@ -41,7 +42,7 @@ class Links(HTMLParser):
         for key in ["href", "src", "value" if tag == "option" else "unused"]:
             value = attrs.get(key)
             if value and value.startswith(("./", "../../")):
-                self.local_paths.append(value.split("#")[0])
+                self.local_paths.append(urlsplit(value).path)
 
 
 class WebsiteTests(unittest.TestCase):

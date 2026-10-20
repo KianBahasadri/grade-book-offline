@@ -1,8 +1,8 @@
 """Build a static download library from complete published GitHub releases."""
 
 import argparse
-import html
 import hashlib
+import html
 import io
 import json
 import re
@@ -126,6 +126,8 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file):
         f' <a href="{prefix}index.html#downloads">Get the latest edition</a>.</p>')
     values = {
         "PREFIX": prefix, "CANONICAL": escape(canonical, quote=True),
+        "ASSET_VERSION": hashlib.sha256(b"".join((ROOT / "site" / name).read_bytes()
+            for name in ("style.css", "site.js", "favicon.svg"))).hexdigest()[:12],
         "PAGE_TITLE": "The GRADE Book — download for offline reading" if selected["latest"]
         else f"The GRADE Book — {selected['label']} edition",
         "EDITION_STATUS": "Latest edition" if selected["latest"] else "Earlier edition",
@@ -176,6 +178,7 @@ def build_site(editions, output, base_url, repo, cover=None):
                  "FONT-LICENSE.txt", "LUCIDE-LICENSE.txt"]:
         shutil.copyfile(ROOT / "site" / name, output / name)
     cover_file, cover_bytes = cover or ("official-cover.png", (ROOT / "site/official-cover.png").read_bytes())
+    cover_file = f"official-cover-{hashlib.sha256(cover_bytes).hexdigest()[:12]}{Path(cover_file).suffix}"
     (output / cover_file).write_bytes(cover_bytes)
     base_url = base_url.rstrip("/") + "/"
     latest = next(item for item in editions if item["latest"])
