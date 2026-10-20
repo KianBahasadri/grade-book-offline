@@ -76,7 +76,9 @@ def editions_from_releases(releases, latest_tag, repo):
         captured = datetime.fromisoformat(match[1])
         label = f"{captured.day} {captured.strftime('%B %Y')}"
         editions.append({
-            "tag": tag, "date": label, "timestamp": published.isoformat(),
+            "tag": tag, "date": label, "capture_date": captured.date().isoformat(),
+            "timestamp": published.isoformat(), "title": release.get("name") or "The GRADE Book",
+            "notes": release.get("body") or "No release notes were provided.",
             "latest": tag == latest_tag,
             "assets": {key: {
                 "url": assets[name]["browser_download_url"], "size": assets[name]["size"],
@@ -106,6 +108,14 @@ def edition_path(edition, prefix):
     return prefix + (f"editions/{edition['tag']}/index.html" if not edition["latest"] else "index.html")
 
 
+def readable_notes(notes):
+    """Show release prose without Markdown syntax or interpreting embedded HTML."""
+    notes = re.sub(r"!?\[([^\]]+)\]\([^)]+\)", r"\1", notes)
+    notes = re.sub(r"\*\*(.+?)\*\*|__(.+?)__", lambda match: match[1] or match[2], notes)
+    notes = re.sub(r"`([^`]+)`", r"\1", notes)
+    return re.sub(r"^#{1,6}\s+", "", notes, flags=re.MULTILINE)
+
+
 def render_page(editions, selected, prefix, canonical, repo, cover_file):
     escape = html.escape
     links = []
@@ -118,9 +128,28 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file):
             f'<span class="format-hint">{escape(description)}</span></span>{DOWNLOAD_ICON}</a>')
     archive = []
     for edition in editions:
-        label = edition["label"] + (" — latest" if edition["latest"] else "")
-        current = ' <span class="current-edition">(Viewing this edition)</span>' if edition["tag"] == selected["tag"] else ""
-        archive.append(f'<li><a href="{escape(edition_path(edition, prefix), quote=True)}#downloads">{escape(label)}</a>{current}</li>')
+        current = edition["tag"] == selected["tag"]
+        badges = ('<span class="edition-badge">Latest</span>' if edition["latest"] else "")
+        if current:
+            badges += '<span class="edition-badge">Viewing</span>'
+        captured = datetime.fromisoformat(edition["capture_date"])
+        date_aliases = " ".join(captured.strftime(pattern) for pattern in
+                                ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%b %d %Y"))
+        notes = readable_notes(edition["notes"])
+        search = " ".join([edition["label"], date_aliases, edition["title"], edition["tag"],
+                           notes, edition["notes"], "latest" if edition["latest"] else "earlier",
+                           "viewing current" if current else ""])
+        archive.append(
+            f'<li data-search="{escape(search, quote=True)}" '
+            f'data-date="{edition["capture_date"]}" data-published="{edition["timestamp"]}">'
+            f'<div class="edition-row"><a class="edition-link" '
+            f'href="{escape(edition_path(edition, prefix), quote=True)}#downloads">'
+            f'{escape(edition["label"])}</a><div class="edition-badges">{badges}</div></div>'
+            '<p class="edition-formats">PDF · EPUB · Word · Offline website · Plain text</p>'
+            f'<details class="release-details"><summary>Release details '
+            '<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg>'
+            f'</summary><p class="release-id">{escape(edition["tag"])}</p>'
+            f'<div class="release-notes">{escape(notes)}</div></details></li>')
     notice = "" if selected["latest"] else (
         '<p class="edition-notice">You’re viewing an earlier edition.'
         f' <a href="{prefix}index.html#downloads">Get the latest edition</a>.</p>')

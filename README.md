@@ -74,8 +74,11 @@ job receives `contents: write`.
 ## Download website
 
 The [GitHub Pages website](https://kianbahasadri.github.io/grade-book-offline/)
-is built from complete published releases. Click the official cover to open a
-3D book and choose a download. Other editions and reading help are below it.
+is built from complete published releases. Drag the 3D book with your mouse to
+rotate it, or use the arrow keys while its cover is focused. Click to open it
+and choose a download. The model's text and images cannot be selected while
+dragging. “Other editions” opens a searchable dialog with dates, build numbers,
+release IDs, and release notes, plus date filters and newest/oldest sorting.
 The layout adapts to phones, supports keyboard navigation and reduced motion,
 and provides light and dark themes. Downloads remain visible without JavaScript.
 Each edition has a permanent page with links to its own files.

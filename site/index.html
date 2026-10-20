@@ -19,9 +19,6 @@
   <header class="site-header">
     <a class="wordmark" href="{{PREFIX}}index.html">The GRADE Book<span>Offline editions</span></a>
     <div class="page-utilities" hidden>
-      <button class="search-launcher" type="button" aria-label="Open search and commands" aria-keyshortcuts="Control+k Meta+k Control+Space" data-tooltip="Open search and commands">
-        <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
-      </button>
       <button class="icon-button theme-toggle" type="button" aria-label="Switch to dark theme" data-tooltip="Switch to dark theme">
         <svg aria-hidden="true" focusable="false"><use href="#icon-moon"></use></svg>
       </button>
@@ -33,6 +30,8 @@
       <div class="book" id="book">
         <div class="back-board" aria-hidden="true"></div>
         <div class="page-edges" aria-hidden="true"></div>
+        <div class="page-top" aria-hidden="true"></div>
+        <div class="page-bottom" aria-hidden="true"></div>
         <div class="book-spine" aria-hidden="true"><span>The GRADE Book</span></div>
         <section class="download-page paper" id="downloads" aria-labelledby="downloads-title" tabindex="-1">
           <div class="page-heading">
@@ -52,8 +51,8 @@
         </section>
         <div class="front-board">
           <div class="cover-front">
-            <button type="button" class="cover-opener" aria-label="Open The GRADE Book to choose a download" aria-expanded="false" aria-controls="downloads" aria-describedby="book-instruction">
-              <img src="{{PREFIX}}{{COVER_FILE}}" width="866" height="1174" alt="The official blue cover of The GRADE Book" fetchpriority="high">
+            <button type="button" class="cover-opener" aria-label="Open The GRADE Book to choose a download" aria-expanded="false" aria-controls="downloads" aria-describedby="book-instruction rotation-instruction">
+              <img src="{{PREFIX}}{{COVER_FILE}}" width="866" height="1174" alt="The official blue cover of The GRADE Book" fetchpriority="high" draggable="false">
             </button>
           </div>
           <div class="cover-inside paper" aria-hidden="true">
@@ -70,10 +69,12 @@
     </div>
     <div class="book-caption">
       <button type="button" class="open-label" hidden>Open the book <svg aria-hidden="true" focusable="false"><use href="#icon-arrow-right"></use></svg></button>
+      <div class="rotation-controls" hidden><span id="rotation-instruction">Drag to rotate. Click to open.<span class="sr-only"> When the book is focused, use the arrow keys to rotate it or Home to reset.</span></span><button class="reset-view" type="button" hidden>Reset view</button></div>
       <p id="book-instruction">{{EDITION_DATE}} <span aria-hidden="true">/</span> English</p>
     </div>
     <div class="support">
-      <details id="editions">
+      <button id="editions-trigger" class="support-button" type="button" aria-haspopup="dialog" aria-controls="editions-modal" hidden>Other editions <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></button>
+      <details id="editions-fallback">
         <summary>Other editions <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
         <div class="support-content">
           <h2>Choose an edition</h2>
@@ -95,21 +96,38 @@
     </div>
   </main>
   <footer class="site-footer">
-    <span>An independent offline edition.</span>
     <a href="https://book.gradepro.org/">Read the original online <svg aria-hidden="true" focusable="false"><use href="#icon-arrow-up-right"></use></svg></a>
   </footer>
-  <dialog class="spotlight" id="spotlight" aria-labelledby="search-label">
-    <div class="spotlight-input">
-      <label class="sr-only" id="search-label" for="command-query">Search commands</label>
-      <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
-      <input id="command-query" type="text" placeholder="Search commands" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="command-results">
+  <dialog id="editions-modal" class="editions-modal" aria-labelledby="editions-title" aria-describedby="editions-description">
+    <div class="dialog-heading">
+      <h2 id="editions-title">Other editions</h2>
+      <button type="button" class="icon-button" data-close-dialog aria-label="Close" data-tooltip="Close"><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button>
     </div>
-    <div id="command-results" role="listbox" aria-label="Commands"></div>
-    <p class="empty-results" hidden>No matching commands</p>
-  </dialog>
-  <dialog id="shortcuts" aria-labelledby="shortcuts-title">
-    <div class="dialog-heading"><h2 id="shortcuts-title">Keyboard shortcuts</h2><button type="button" class="icon-button" data-close-dialog aria-label="Close" data-tooltip="Close"><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button></div>
-    <dl class="shortcut-list"></dl>
+    <p id="editions-description">Find a version of the book and choose its downloads.</p>
+    <label class="field-label" for="edition-query">Search editions</label>
+    <div class="edition-search">
+      <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
+      <input id="edition-query" type="search" placeholder="Date, build, release ID, or notes" autocomplete="off" aria-controls="edition-results" aria-describedby="edition-search-help">
+      <button class="icon-button clear-search" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button>
+    </div>
+    <p id="edition-search-help">Search words together, or put an exact phrase in quotes.</p>
+    <div class="edition-tools">
+      <details class="date-filter">
+        <summary>Filter by date <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
+        <div class="date-fields">
+          <div><label class="field-label" for="edition-from">From</label><input id="edition-from" type="date" aria-describedby="date-error"></div>
+          <div><label class="field-label" for="edition-to">Through</label><input id="edition-to" type="date" aria-describedby="date-error"></div>
+        </div>
+        <p id="date-error" role="alert" hidden>Choose an end date on or after the start date</p>
+      </details>
+      <button class="sort-editions quiet-button" type="button">Newest first</button>
+    </div>
+    <div class="edition-results-heading">
+      <p id="edition-count" role="status" aria-live="polite" aria-atomic="true">{{EDITION_COUNT}}</p>
+      <button class="clear-filters quiet-button" type="button" hidden>Clear filters</button>
+    </div>
+    <div id="edition-results"></div>
+    <p class="no-editions" hidden>No editions match. Try fewer words or clear the filters.</p>
   </dialog>
   <div id="tooltip" role="tooltip" hidden></div>
   <svg class="icon-sprite" aria-hidden="true" focusable="false">

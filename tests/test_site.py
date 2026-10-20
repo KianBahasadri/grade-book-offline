@@ -31,10 +31,15 @@ class Links(HTMLParser):
         self.downloads = {}
         self.local_paths = []
         self.ids = []
+        self.search_entries = []
+        self.tags = []
         self.feed(text)
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        self.tags.append(tag)
+        if "data-search" in attrs:
+            self.search_entries.append(attrs)
         if "id" in attrs:
             self.ids.append(attrs["id"])
         if "data-format" in attrs:
@@ -126,6 +131,28 @@ class WebsiteTests(unittest.TestCase):
                         published_cover(edition)
                 else:
                     self.assertEqual(published_cover(edition), ("official-cover.png", image))
+
+    def test_release_search_preserves_metadata_without_injecting_markup(self):
+        current = release()
+        current["name"] = 'Updates to "certainty" & evidence'
+        current["body"] = ('## Révision\nImproved **risk of bias** guidance. '
+                           '[Original](https://book.gradepro.org/)\n'
+                           '<img src=x onerror="alert(1)">')
+        editions = editions_from_releases([current], current["tag_name"], REPO)
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "website"
+            build_site(editions, output, BASE_URL, REPO)
+            text = (output / "index.html").read_text()
+            parsed = Links(text)
+            self.assertEqual(len(parsed.search_entries), 1)
+            entry = parsed.search_entries[0]
+            for term in [current["name"], current["tag_name"], "Révision",
+                         "risk of bias", "2026-10-20", "10/20/2026", "20/10/2026"]:
+                self.assertIn(term, entry["data-search"])
+            self.assertEqual(entry["data-date"], "2026-10-20")
+            self.assertEqual(entry["data-published"], "2026-10-20T18:00:00+00:00")
+            self.assertEqual(parsed.tags.count("img"), 1)  # Only the official cover.
+            self.assertIn('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;', text)
 
     def test_releases_are_paginated_and_api_errors_are_not_swallowed(self):
         current = release()

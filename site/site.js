@@ -3,17 +3,46 @@
 (() => {
   const root = document.documentElement;
   const book = document.querySelector("#book");
+  const stage = document.querySelector(".book-stage");
   const downloads = document.querySelector("#downloads");
   const cover = document.querySelector(".cover-front");
   const opener = document.querySelector(".cover-opener");
   const caption = document.querySelector(".open-label");
   const closeBook = document.querySelector(".close-book");
+  const rotationControls = document.querySelector(".rotation-controls");
+  const resetView = document.querySelector(".reset-view");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const editionModal = document.querySelector("#editions-modal");
+  const editionTrigger = document.querySelector("#editions-trigger");
+  const defaultView = { x: 5, y: -22 };
+  let rotation = { ...defaultView };
+  let gesture = null;
+  let spinFrame = 0;
+  let suppressClick = false;
   let focusTimer;
-  let sectionIndex = 0;
 
+  function drawRotation() {
+    rotation.y = ((rotation.y + 180) % 360 + 360) % 360 - 180;
+    rotation.x = Math.max(-75, Math.min(75, rotation.x));
+    book.style.setProperty("--rotation-x", rotation.x + "deg");
+    book.style.setProperty("--rotation-y", rotation.y + "deg");
+    resetView.hidden = Math.abs(rotation.x - defaultView.x) < .1
+      && Math.abs(rotation.y - defaultView.y) < .1;
+  }
+  function stopSpin() {
+    cancelAnimationFrame(spinFrame);
+    spinFrame = 0;
+    book.classList.remove("is-rotating", "is-dragging");
+  }
+  function resetRotation() {
+    stopSpin();
+    rotation = { ...defaultView };
+    drawRotation();
+  }
   function setOpen(open, focus = true) {
     clearTimeout(focusTimer);
+    stopSpin();
+    gesture = null;
     book.classList.toggle("is-open", open);
     downloads.inert = !open;
     downloads.setAttribute("aria-hidden", String(!open));
@@ -21,46 +50,196 @@
     opener.setAttribute("aria-expanded", String(open));
     caption.firstChild.textContent = open ? "Close the book " : "Open the book ";
     caption.classList.toggle("is-open", open);
+    rotationControls.hidden = open;
+    resetRotation();
     if (focus) {
       if (!open) opener.focus({ preventScroll: true });
-      else focusTimer = setTimeout(() => downloads.querySelector("a").focus({ preventScroll: true }),
-        reducedMotion.matches ? 0 : 1100);
+      else focusTimer = setTimeout(() => {
+        if (!editionModal.open) downloads.querySelector("a").focus({ preventScroll: true });
+      }, reducedMotion.matches ? 0 : 1100);
     }
   }
   opener.addEventListener("click", () => setOpen(true));
   closeBook.addEventListener("click", () => setOpen(false));
   caption.addEventListener("click", () => setOpen(!book.classList.contains("is-open")));
+  resetView.addEventListener("click", resetRotation);
   root.classList.add("is-enhanced");
-  for (const element of [caption, closeBook, document.querySelector(".page-utilities")]) element.hidden = false;
+  for (const element of [caption, closeBook, editionTrigger, document.querySelector(".page-utilities")]) element.hidden = false;
   setOpen(location.hash === "#downloads", false);
 
-  const destinations = [
-    { id: "downloads", label: "01 Downloads", key: "Alt+1" },
-    { id: "editions", label: "02 Other editions", key: "Alt+2" },
-    { id: "about", label: "03 About & help", key: "Alt+3" },
-  ];
-  function jump(index) {
-    sectionIndex = index;
-    const destination = document.getElementById(destinations[index].id);
-    if (index === 0) setOpen(true);
-    else {
-      destination.open = true;
-      destination.querySelector("summary").focus({ preventScroll: true });
+  // Keep native click/keyboard activation. Capture only once a real drag starts.
+  stage.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || !event.isPrimary || event.pointerType === "touch"
+        || book.classList.contains("is-open")) return;
+    stopSpin();
+    gesture = { id: event.pointerId, startX: event.clientX, startY: event.clientY,
+      lastX: event.clientX, lastY: event.clientY, time: event.timeStamp,
+      initial: { ...rotation }, dragging: false, vx: 0, vy: 0 };
+  });
+  window.addEventListener("pointermove", event => {
+    if (!gesture || gesture.id !== event.pointerId) return;
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    if (!gesture.dragging && Math.hypot(dx, dy) < 6) return;
+    if (!gesture.dragging) {
+      gesture.dragging = true;
+      stage.setPointerCapture(event.pointerId);
+      book.classList.add("is-rotating", "is-dragging");
     }
-    history.replaceState(null, "", "#" + destination.id);
-    destination.scrollIntoView({ behavior: reducedMotion.matches ? "instant" : "smooth", block: "center" });
+    event.preventDefault();
+    const elapsed = Math.max(8, event.timeStamp - gesture.time);
+    gesture.vy = Math.max(-1.2, Math.min(1.2, (event.clientX - gesture.lastX) * .55 / elapsed));
+    gesture.vx = Math.max(-.5, Math.min(.5, -(event.clientY - gesture.lastY) * .35 / elapsed));
+    rotation = { x: gesture.initial.x - dy * .35, y: gesture.initial.y + dx * .55 };
+    gesture.lastX = event.clientX;
+    gesture.lastY = event.clientY;
+    gesture.time = event.timeStamp;
+    drawRotation();
+  }, { passive: false });
+  function finishDrag(event, cancelled = false) {
+    if (!gesture || (event && gesture.id !== event.pointerId)) return;
+    const ended = gesture;
+    gesture = null;
+    if (stage.hasPointerCapture(ended.id)) stage.releasePointerCapture(ended.id);
+    book.classList.remove("is-dragging");
+    if (!ended.dragging) return;
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 400);
+    if (cancelled || reducedMotion.matches || !event || event.timeStamp - ended.time > 100) {
+      stopSpin();
+      return;
+    }
+    let previous = performance.now();
+    const started = previous;
+    function coast(now) {
+      const elapsed = Math.min(32, now - previous);
+      previous = now;
+      ended.vx *= Math.pow(.88, elapsed / 16);
+      ended.vy *= Math.pow(.88, elapsed / 16);
+      rotation.x += ended.vx * elapsed;
+      rotation.y += ended.vy * elapsed;
+      drawRotation();
+      if (now - started < 700 && Math.abs(ended.vx) + Math.abs(ended.vy) > .015) {
+        spinFrame = requestAnimationFrame(coast);
+      } else stopSpin();
+    }
+    spinFrame = requestAnimationFrame(coast);
+  }
+  window.addEventListener("pointerup", event => finishDrag(event));
+  window.addEventListener("pointercancel", event => finishDrag(event, true));
+  stage.addEventListener("lostpointercapture", event => finishDrag(event, true));
+  window.addEventListener("blur", () => { finishDrag(null, true); stopSpin(); });
+  stage.addEventListener("dragstart", event => event.preventDefault());
+  stage.addEventListener("click", event => {
+    if (suppressClick) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      suppressClick = false;
+    } else if (!book.classList.contains("is-open") && book.contains(event.target)
+        && !event.target.closest("button")) setOpen(true);
+  }, true);
+  opener.addEventListener("keydown", event => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const directions = { ArrowLeft: [0, -15], ArrowRight: [0, 15], ArrowUp: [-10, 0], ArrowDown: [10, 0] };
+    if (event.key === "Home") { event.preventDefault(); resetRotation(); }
+    if (directions[event.key]) {
+      event.preventDefault();
+      stopSpin();
+      book.classList.add("is-rotating");
+      rotation.x += directions[event.key][0];
+      rotation.y += directions[event.key][1];
+      drawRotation();
+    }
+  });
+  function showDownloads() {
+    setOpen(true);
+    downloads.scrollIntoView({ behavior: reducedMotion.matches ? "instant" : "smooth", block: "center" });
   }
   document.querySelectorAll('a[href="#downloads"]').forEach(link =>
-    link.addEventListener("click", event => { event.preventDefault(); jump(0); }));
-  addEventListener("hashchange", () => {
-    const index = destinations.findIndex(item => "#" + item.id === location.hash);
-    if (index >= 0) jump(index);
-  });
-  addEventListener("scroll", () => {
-    for (let index = 0; index < destinations.length; index++) {
-      if (document.getElementById(destinations[index].id).getBoundingClientRect().top <= 140) sectionIndex = index;
+    link.addEventListener("click", event => {
+      event.preventDefault();
+      history.replaceState(null, "", "#downloads");
+      showDownloads();
+    }));
+  addEventListener("hashchange", () => { if (location.hash === "#downloads") showDownloads(); });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    if (editionModal.open) {
+      // Handle Escape before the search field consumes it to clear its value.
+      event.preventDefault();
+      editionModal.close();
+    } else if (book.classList.contains("is-open")) setOpen(false);
+  }, true);
+
+  const query = document.querySelector("#edition-query");
+  const from = document.querySelector("#edition-from");
+  const through = document.querySelector("#edition-to");
+  const clearSearch = document.querySelector(".clear-search");
+  const clearFilters = document.querySelector(".clear-filters");
+  const sortButton = document.querySelector(".sort-editions");
+  const count = document.querySelector("#edition-count");
+  const fallback = document.querySelector("#editions-fallback");
+  const list = fallback.querySelector(".edition-list");
+  const normalize = text => text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+  const entries = [...list.children].map(element => ({ element, search: normalize(element.dataset.search),
+    date: element.dataset.date, published: element.dataset.published }));
+  let newestFirst = true;
+  document.querySelector("#edition-results").append(list);
+  fallback.hidden = true;
+
+  function filterEditions() {
+    // Quoted phrases and "build N" remain together; other words may occur anywhere.
+    const terms = [...normalize(query.value).matchAll(/"([^"]+)"|(build\s+\d+)|([^\s"]+)/g)]
+      .map(match => match[1] || match[2] || match[3]);
+    const invalidDates = Boolean(from.value && through.value && from.value > through.value);
+    document.querySelector("#date-error").hidden = !invalidDates;
+    through.setAttribute("aria-invalid", String(invalidDates));
+    clearSearch.hidden = !query.value;
+    clearFilters.hidden = !(query.value || from.value || through.value);
+    entries.sort((a, b) => (newestFirst ? -1 : 1) * a.published.localeCompare(b.published));
+    let visible = 0;
+    for (const entry of entries) {
+      const matches = !invalidDates && (!from.value || entry.date >= from.value)
+        && (!through.value || entry.date <= through.value)
+        && terms.every(term => /^(build )?\d+$/.test(term)
+          ? new RegExp(`\\b${term}\\b`).test(entry.search) : entry.search.includes(term));
+      entry.element.hidden = !matches;
+      visible += Number(matches);
+      list.append(entry.element);
     }
-  }, { passive: true });
+    count.textContent = `${visible} of ${entries.length} edition${entries.length === 1 ? "" : "s"}`;
+    document.querySelector(".no-editions").hidden = visible > 0 || invalidDates;
+  }
+  for (const input of [query, from, through]) input.addEventListener("input", filterEditions);
+  clearSearch.addEventListener("click", () => { query.value = ""; filterEditions(); query.focus(); });
+  clearFilters.addEventListener("click", () => {
+    query.value = from.value = through.value = "";
+    filterEditions();
+    query.focus();
+  });
+  sortButton.addEventListener("click", () => {
+    newestFirst = !newestFirst;
+    sortButton.textContent = newestFirst ? "Newest first" : "Oldest first";
+    filterEditions();
+  });
+  editionTrigger.addEventListener("click", () => {
+    clearTimeout(focusTimer);
+    stopSpin();
+    filterEditions();
+    editionModal.showModal();
+    root.classList.add("modal-open");
+    query.focus();
+  });
+  editionModal.querySelector("[data-close-dialog]").addEventListener("click", () => editionModal.close());
+  editionModal.addEventListener("click", event => {
+    const rect = editionModal.getBoundingClientRect();
+    if (event.target === editionModal && (event.clientX < rect.left || event.clientX > rect.right
+        || event.clientY < rect.top || event.clientY > rect.bottom)) editionModal.close();
+  });
+  editionModal.addEventListener("close", () => {
+    root.classList.remove("modal-open");
+    editionTrigger.focus({ preventScroll: true });
+  });
 
   const themeButton = document.querySelector(".theme-toggle");
   function setTheme(theme) {
@@ -78,152 +257,6 @@
   const toggleTheme = () => setTheme(root.dataset.theme === "dark" ? "light" : "dark");
   themeButton.addEventListener("click", toggleTheme);
 
-  const palette = document.querySelector("#spotlight");
-  const query = document.querySelector("#command-query");
-  const results = document.querySelector("#command-results");
-  const launcher = document.querySelector(".search-launcher");
-  const shortcuts = document.querySelector("#shortcuts");
-  const isApple = /Mac|iPhone|iPad/.test(navigator.platform);
-  let mode = "commands";
-  let filtered = [];
-  let active = 0;
-  const invokers = new WeakMap();
-  function openDialog(dialog, invoker = document.activeElement) {
-    invokers.set(dialog, invoker);
-    dialog.showModal();
-  }
-  document.querySelectorAll("dialog").forEach(dialog => {
-    dialog.addEventListener("click", event => {
-      // The dialog's padding is content too; only an actual backdrop click closes.
-      const rect = dialog.getBoundingClientRect();
-      if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right
-          || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
-    });
-    dialog.addEventListener("close", () => invokers.get(dialog)?.focus({ preventScroll: true }));
-    dialog.querySelectorAll("[data-close-dialog]").forEach(button =>
-      button.addEventListener("click", () => dialog.close()));
-  });
-  function keycaps(shortcut) {
-    const group = document.createElement("span");
-    group.className = "key-group";
-    group.setAttribute("aria-hidden", "true");
-    shortcut.split("+").forEach(key => {
-      const cap = document.createElement("kbd");
-      cap.textContent = key === "Alt" && isApple ? "⌥" : key;
-      group.append(cap);
-    });
-    return group;
-  }
-  const commands = [
-    { label: "Jump to…", key: "Alt+j", run: () => showPalette("destinations") },
-    { label: "Download PDF", key: "Alt+Shift+p", run: () => document.querySelector('[data-format="pdf"]').click() },
-    { label: "Toggle theme", key: "Alt+Shift+t", run: toggleTheme },
-    { label: "Keyboard shortcuts", key: "Alt+/", run: () => openDialog(shortcuts, launcher) },
-  ];
-  const allShortcuts = [
-    ["Search and commands", "Ctrl+K / Command+K / Ctrl+Space"],
-    ...commands.map(command => [command.label, command.key]),
-    ...destinations.map(destination => [destination.label, destination.key]),
-    ["Previous section", "Alt+ArrowUp"], ["Next section", "Alt+ArrowDown"],
-    ["Open or close book", "Enter / Space"], ["Close book or dialog", "Escape"],
-  ];
-  for (const [label, keys] of allShortcuts) {
-    const row = document.createElement("div");
-    const term = document.createElement("dt");
-    const description = document.createElement("dd");
-    term.textContent = label;
-    keys.split(" / ").forEach((shortcut, index) => {
-      if (index) description.append(" / ");
-      description.append(keycaps(shortcut));
-    });
-    row.append(term, description);
-    shortcuts.querySelector("dl").append(row);
-  }
-  function activate(index) {
-    const item = filtered[index];
-    if (!item) return;
-    if (item.label === "Jump to…") { item.run(); return; }
-    palette.close();
-    // Wait for native close/focus restoration before opening another task.
-    setTimeout(item.run, 0);
-  }
-  function select(index) {
-    active = Math.max(0, Math.min(index, filtered.length - 1));
-    results.querySelectorAll('[role="option"]').forEach((row, i) =>
-      row.setAttribute("aria-selected", String(i === active)));
-    if (filtered.length) {
-      query.setAttribute("aria-activedescendant", "command-" + active);
-      results.children[active].scrollIntoView({ block: "nearest" });
-    } else query.removeAttribute("aria-activedescendant");
-  }
-  function renderCommands() {
-    const items = mode === "commands" ? commands : destinations.map((item, index) =>
-      ({ ...item, run: () => jump(index) }));
-    filtered = items.filter(item => item.label.toLowerCase().includes(query.value.trim().toLowerCase()));
-    results.replaceChildren();
-    filtered.forEach((item, index) => {
-      const row = document.createElement("div");
-      row.id = "command-" + index;
-      row.className = "command-option";
-      row.setAttribute("role", "option");
-      row.setAttribute("aria-keyshortcuts", item.key);
-      const label = document.createElement("span");
-      label.textContent = item.label;
-      row.append(label, keycaps(item.key));
-      row.addEventListener("pointermove", () => select(index));
-      row.addEventListener("mousedown", event => event.preventDefault());
-      row.addEventListener("click", () => activate(index));
-      results.append(row);
-    });
-    const empty = palette.querySelector(".empty-results");
-    empty.hidden = filtered.length > 0;
-    empty.textContent = mode === "commands" ? "No matching commands" : "No matching components";
-    select(0);
-  }
-  function showPalette(nextMode = "commands") {
-    mode = nextMode;
-    query.value = "";
-    query.placeholder = mode === "commands" ? "Search commands" : "Jump to a component";
-    document.querySelector("#search-label").textContent = query.placeholder;
-    results.setAttribute("aria-label", mode === "commands" ? "Commands" : "Components");
-    if (!palette.open) openDialog(palette, launcher);
-    query.focus();
-    renderCommands();
-  }
-  launcher.addEventListener("click", () => showPalette());
-  query.addEventListener("input", renderCommands);
-  query.addEventListener("keydown", event => {
-    if (["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) event.preventDefault();
-    if (event.key === "ArrowDown") select(active + 1);
-    if (event.key === "ArrowUp") select(active - 1);
-    if (event.key === "Enter") activate(active);
-  });
-  document.addEventListener("keydown", event => {
-    const editing = event.target.matches("input, textarea, select, [contenteditable='true']");
-    if ((editing && event.target !== query) || shortcuts.open) return;
-    if (((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k")
-        || (event.ctrlKey && event.code === "Space")) {
-      event.preventDefault(); showPalette(); return;
-    }
-    if (event.key === "Escape" && !palette.open && book.classList.contains("is-open")) {
-      setOpen(false); return;
-    }
-    if (!event.altKey) return;
-    let action;
-    const key = event.key.toLowerCase();
-    if (key === "j") action = () => showPalette("destinations");
-    if (event.shiftKey && key === "p") action = commands[1].run;
-    if (event.shiftKey && key === "t") action = toggleTheme;
-    if (key === "/") action = commands[3].run;
-    if (/^[1-3]$/.test(key)) action = () => jump(Number(key) - 1);
-    if (key === "arrowup") action = () => jump(Math.max(0, sectionIndex - 1));
-    if (key === "arrowdown") action = () => jump(Math.min(2, sectionIndex + 1));
-    if (action) {
-      event.preventDefault();
-      if (palette.open && key !== "j") { palette.close(); setTimeout(action, 0); }
-      else action();
-    }
-  });
 
   const tooltip = document.querySelector("#tooltip");
   let tooltipTimer, tooltipTarget;
