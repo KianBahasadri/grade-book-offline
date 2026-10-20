@@ -2,6 +2,7 @@ import copy
 import hashlib
 import io
 import json
+import struct
 import zipfile
 import tempfile
 import unittest
@@ -10,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
-from scripts.site import ASSETS, BASE_URL, REPO, build_site, editions_from_releases, load_releases, published_cover
+from scripts.site import ASSETS, BASE_URL, REPO, ROOT, build_site, editions_from_releases, load_releases, published_cover
 
 
 def release(tag="edition-2026-10-20-aaaa-1.1", published="2026-10-20T18:00:00Z"):
@@ -153,6 +154,47 @@ class WebsiteTests(unittest.TestCase):
             self.assertEqual(entry["data-published"], "2026-10-20T18:00:00+00:00")
             self.assertEqual(parsed.tags.count("img"), 1)  # Only the official cover.
             self.assertIn('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;', text)
+
+    def test_high_resolution_cover_matches_the_published_artwork(self):
+        current = release()
+        editions = editions_from_releases([current], current["tag_name"], REPO)
+        rendered = (ROOT / "site/official-cover-3x.png").read_bytes()
+        metadata = json.loads((ROOT / "site/cover-render.json").read_text())
+        size = struct.unpack(">II", rendered[16:24])
+        self.assertEqual(size, (metadata["width"], metadata["height"]))
+        self.assertGreaterEqual(size[0], 2300)
+        self.assertGreaterEqual(size[1], 3300)
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            build_site(editions, output, BASE_URL, REPO)
+            image = next(output.glob("official-cover-*.png"))
+            self.assertEqual(image.read_bytes(), rendered)
+            for page in output.rglob("*.html"):
+                text = page.read_text()
+                self.assertIn('class="cover-flat"', text)
+                self.assertIn(f'width="{size[0]}" height="{size[1]}"', text)
+
+    def test_new_publisher_cover_is_not_replaced_by_a_stale_render(self):
+        current = release()
+        editions = editions_from_releases([current], current["tag_name"], REPO)
+        replacement = b"a newly published cover"
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            build_site(editions, output, BASE_URL, REPO, ("official-cover.webp", replacement))
+            self.assertEqual(next(output.glob("official-cover-*.webp")).read_bytes(), replacement)
+            self.assertIn('class="cover-preview"', (output / "index.html").read_text())
+
+    def test_corrupt_high_resolution_cover_aborts_the_build(self):
+        current = release()
+        editions = editions_from_releases([current], current["tag_name"], REPO)
+        read_bytes = Path.read_bytes
+
+        def corrupted(path):
+            return b"corrupted render" if path.name == "official-cover-3x.png" else read_bytes(path)
+
+        with tempfile.TemporaryDirectory() as temp, patch.object(Path, "read_bytes", corrupted):
+            with self.assertRaisesRegex(ValueError, "High-resolution cover checksum mismatch"):
+                build_site(editions, Path(temp), BASE_URL, REPO)
 
     def test_releases_are_paginated_and_api_errors_are_not_swallowed(self):
         current = release()

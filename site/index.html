@@ -17,7 +17,51 @@
 <body>
   <a class="skip-link" href="#downloads">Skip to downloads</a>
   <header class="site-header">
-    <a class="wordmark" href="{{PREFIX}}index.html">The GRADE Book<span>Offline editions</span></a>
+    <a class="wordmark" href="{{PREFIX}}index.html">The GRADE Book</a>
+    <nav class="support" aria-label="Book information">
+      <details id="editions" class="support-dropdown" name="book-support">
+        <summary id="editions-trigger" aria-controls="editions-panel">Other editions <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
+        <div id="editions-panel" class="support-panel editions-panel" role="region" aria-labelledby="editions-trigger">
+          <div class="edition-filter-controls" hidden>
+            <div class="edition-search">
+              <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
+              <input id="edition-query" type="search" aria-label="Search editions" placeholder="Date, build, release ID, or notes" autocomplete="off" aria-controls="edition-results" aria-describedby="edition-search-help">
+              <button class="icon-button clear-search" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button>
+            </div>
+            <p id="edition-search-help">Search words together, or put an exact phrase in quotes.</p>
+            <div class="edition-tools">
+              <details class="date-filter">
+                <summary>Filter by date <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
+                <div class="date-fields">
+                  <div><label class="field-label" for="edition-from">From</label><input id="edition-from" type="date" aria-describedby="date-error"></div>
+                  <div><label class="field-label" for="edition-to">Through</label><input id="edition-to" type="date" aria-describedby="date-error"></div>
+                </div>
+                <p id="date-error" role="alert" hidden>Choose an end date on or after the start date</p>
+              </details>
+              <button class="sort-editions quiet-button" type="button">Newest first</button>
+            </div>
+            <div class="edition-results-heading">
+              <p id="edition-count" role="status" aria-live="polite" aria-atomic="true">{{EDITION_COUNT}}</p>
+              <button class="clear-filters quiet-button" type="button" hidden>Clear filters</button>
+            </div>
+          </div>
+          <div id="edition-results"><ul class="edition-list">{{ARCHIVE_LINKS}}</ul></div>
+          <p class="no-editions" hidden>No editions match. Try fewer words or clear the filters.</p>
+        </div>
+      </details>
+      <details id="about" class="support-dropdown" name="book-support">
+        <summary id="about-trigger" aria-controls="about-panel">About &amp; help <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
+        <div id="about-panel" class="support-panel support-content" role="region" aria-labelledby="about-trigger">
+          <h2>Read it your way</h2>
+          <p><strong>PDF</strong> opens on most phones and computers. <strong>EPUB</strong> lets you adjust the text in a reading app. For the <strong>offline website</strong>, unzip the download and open <strong>grade-book/index.html</strong>. Keep its folder together.</p>
+          <p>{{COVERAGE}} Figures, tables, references, and original attribution are retained. Plain text includes image descriptions. Unfinished chapters and older-handbook links are listed separately; external websites and videos still need a connection.</p>
+          <p>We check weekly and publish only when the source changes. Return here for a newer copy.</p>
+          <p>An independent project. The original book is published by the GRADE Working Group and edited by Ignacio Neumann and Holger J. Schünemann. This project is not endorsed by the authors or Evidence Prime.</p>
+          <p>Book and cover: <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a>. <a href="{{REPOSITORY_URL}}">Project source</a> · <a href="{{CHECKSUM_URL}}">File checksums</a></p>
+        </div>
+      </details>
+      <a class="original-link" href="https://book.gradepro.org/" target="_blank" rel="noreferrer">Read the original online <svg aria-hidden="true" focusable="false"><use href="#icon-arrow-up-right"></use></svg></a>
+    </nav>
     <div class="page-utilities" hidden>
       <button class="icon-button theme-toggle" type="button" aria-label="Switch to dark theme" data-tooltip="Switch to dark theme">
         <svg aria-hidden="true" focusable="false"><use href="#icon-moon"></use></svg>
@@ -51,8 +95,8 @@
         </section>
         <div class="front-board">
           <div class="cover-front">
-            <button type="button" class="cover-opener" aria-label="Open The GRADE Book to choose a download" aria-expanded="false" aria-controls="downloads" aria-describedby="book-instruction rotation-instruction">
-              <img src="{{PREFIX}}{{COVER_FILE}}" width="866" height="1174" alt="The official blue cover of The GRADE Book" fetchpriority="high" draggable="false">
+            <button type="button" class="cover-opener" aria-label="Open The GRADE Book to choose a download" aria-expanded="false" aria-controls="downloads">
+              <img class="{{COVER_CLASS}}" src="{{PREFIX}}{{COVER_FILE}}" width="{{COVER_WIDTH}}" height="{{COVER_HEIGHT}}" alt="The official blue cover of The GRADE Book" fetchpriority="high" draggable="false">
             </button>
           </div>
           <div class="cover-inside paper" aria-hidden="true">
@@ -69,66 +113,8 @@
     </div>
     <div class="book-caption">
       <button type="button" class="open-label" hidden>Open the book <svg aria-hidden="true" focusable="false"><use href="#icon-arrow-right"></use></svg></button>
-      <div class="rotation-controls" hidden><span id="rotation-instruction">Drag to rotate. Click to open.<span class="sr-only"> When the book is focused, use the arrow keys to rotate it or Home to reset.</span></span><button class="reset-view" type="button" hidden>Reset view</button></div>
-      <p id="book-instruction">{{EDITION_DATE}} <span aria-hidden="true">/</span> English</p>
-    </div>
-    <div class="support">
-      <button id="editions-trigger" class="support-button" type="button" aria-haspopup="dialog" aria-controls="editions-modal" hidden>Other editions <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></button>
-      <details id="editions-fallback">
-        <summary>Other editions <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
-        <div class="support-content">
-          <h2>Choose an edition</h2>
-          <p>Each date has its own complete set of downloads.</p>
-          <ul class="edition-list">{{ARCHIVE_LINKS}}</ul>
-        </div>
-      </details>
-      <details id="about">
-        <summary>About &amp; help <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
-        <div class="support-content">
-          <h2>Read it your way</h2>
-          <p><strong>PDF</strong> opens on most phones and computers. <strong>EPUB</strong> lets you adjust the text in a reading app. For the <strong>offline website</strong>, unzip the download and open <strong>grade-book/index.html</strong>. Keep its folder together.</p>
-          <p>{{COVERAGE}} Figures, tables, references, and original attribution are retained. Plain text includes image descriptions. Unfinished chapters and older-handbook links are listed separately; external websites and videos still need a connection.</p>
-          <p>We check weekly and publish only when the source changes. Return here for a newer copy.</p>
-          <p>An independent project. The original book is published by the GRADE Working Group and edited by Ignacio Neumann and Holger J. Schünemann. This project is not endorsed by the authors or Evidence Prime.</p>
-          <p>Book and cover: <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a>. <a href="{{REPOSITORY_URL}}">Project source</a> · <a href="{{CHECKSUM_URL}}">File checksums</a></p>
-        </div>
-      </details>
     </div>
   </main>
-  <footer class="site-footer">
-    <a href="https://book.gradepro.org/">Read the original online <svg aria-hidden="true" focusable="false"><use href="#icon-arrow-up-right"></use></svg></a>
-  </footer>
-  <dialog id="editions-modal" class="editions-modal" aria-labelledby="editions-title" aria-describedby="editions-description">
-    <div class="dialog-heading">
-      <h2 id="editions-title">Other editions</h2>
-      <button type="button" class="icon-button" data-close-dialog aria-label="Close" data-tooltip="Close"><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button>
-    </div>
-    <p id="editions-description">Find a version of the book and choose its downloads.</p>
-    <label class="field-label" for="edition-query">Search editions</label>
-    <div class="edition-search">
-      <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
-      <input id="edition-query" type="search" placeholder="Date, build, release ID, or notes" autocomplete="off" aria-controls="edition-results" aria-describedby="edition-search-help">
-      <button class="icon-button clear-search" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button>
-    </div>
-    <p id="edition-search-help">Search words together, or put an exact phrase in quotes.</p>
-    <div class="edition-tools">
-      <details class="date-filter">
-        <summary>Filter by date <svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></summary>
-        <div class="date-fields">
-          <div><label class="field-label" for="edition-from">From</label><input id="edition-from" type="date" aria-describedby="date-error"></div>
-          <div><label class="field-label" for="edition-to">Through</label><input id="edition-to" type="date" aria-describedby="date-error"></div>
-        </div>
-        <p id="date-error" role="alert" hidden>Choose an end date on or after the start date</p>
-      </details>
-      <button class="sort-editions quiet-button" type="button">Newest first</button>
-    </div>
-    <div class="edition-results-heading">
-      <p id="edition-count" role="status" aria-live="polite" aria-atomic="true">{{EDITION_COUNT}}</p>
-      <button class="clear-filters quiet-button" type="button" hidden>Clear filters</button>
-    </div>
-    <div id="edition-results"></div>
-    <p class="no-editions" hidden>No editions match. Try fewer words or clear the filters.</p>
-  </dialog>
   <div id="tooltip" role="tooltip" hidden></div>
   <svg class="icon-sprite" aria-hidden="true" focusable="false">
     <defs>

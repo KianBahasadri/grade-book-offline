@@ -116,7 +116,8 @@ def readable_notes(notes):
     return re.sub(r"^#{1,6}\s+", "", notes, flags=re.MULTILINE)
 
 
-def render_page(editions, selected, prefix, canonical, repo, cover_file):
+def render_page(editions, selected, prefix, canonical, repo, cover_file,
+                cover_size=(866, 1174), cover_flat=False):
     escape = html.escape
     links = []
     for kind, title, description, action in FORMATS:
@@ -145,7 +146,6 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file):
             f'<div class="edition-row"><a class="edition-link" '
             f'href="{escape(edition_path(edition, prefix), quote=True)}#downloads">'
             f'{escape(edition["label"])}</a><div class="edition-badges">{badges}</div></div>'
-            '<p class="edition-formats">PDF · EPUB · Word · Offline website · Plain text</p>'
             f'<details class="release-details"><summary>Release details '
             '<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg>'
             f'</summary><p class="release-id">{escape(edition["tag"])}</p>'
@@ -161,6 +161,8 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file):
         else f"The GRADE Book — {selected['label']} edition",
         "EDITION_STATUS": "Latest edition" if selected["latest"] else "Earlier edition",
         "EDITION_DATE": escape(selected["label"]), "COVER_FILE": cover_file,
+        "COVER_WIDTH": str(cover_size[0]), "COVER_HEIGHT": str(cover_size[1]),
+        "COVER_CLASS": "cover-flat" if cover_flat else "cover-preview",
         "EDITION_NOTICE": notice, "FORMAT_LINKS": "".join(links), "ARCHIVE_LINKS": "".join(archive),
         "EDITION_COUNT": f"{len(editions)} edition{'s' if len(editions) != 1 else ''}",
         "COVERAGE": f"This edition contains the published English chapters of The GRADE Book "
@@ -207,18 +209,29 @@ def build_site(editions, output, base_url, repo, cover=None):
                  "FONT-LICENSE.txt", "LUCIDE-LICENSE.txt"]:
         shutil.copyfile(ROOT / "site" / name, output / name)
     cover_file, cover_bytes = cover or ("official-cover.png", (ROOT / "site/official-cover.png").read_bytes())
+    cover_size, cover_flat = (866, 1174), False
+    rendered_cover = json.loads((ROOT / "site/cover-render.json").read_text())
+    # A new publisher cover must never be replaced by an older high-res render.
+    if hashlib.sha256(cover_bytes).hexdigest() == rendered_cover["preview_sha256"]:
+        cover_bytes = (ROOT / "site/official-cover-3x.png").read_bytes()
+        if hashlib.sha256(cover_bytes).hexdigest() != rendered_cover["render_sha256"]:
+            raise ValueError("High-resolution cover checksum mismatch")
+        cover_file = "official-cover-3x.png"
+        cover_size = (rendered_cover["width"], rendered_cover["height"])
+        cover_flat = True
     cover_file = f"official-cover-{hashlib.sha256(cover_bytes).hexdigest()[:12]}{Path(cover_file).suffix}"
     (output / cover_file).write_bytes(cover_bytes)
     base_url = base_url.rstrip("/") + "/"
     latest = next(item for item in editions if item["latest"])
-    (output / "index.html").write_text(render_page(editions, latest, "./", base_url, repo, cover_file))
+    (output / "index.html").write_text(
+        render_page(editions, latest, "./", base_url, repo, cover_file, cover_size, cover_flat))
     # Keep a permanent page for every edition, including today's latest.
     for edition in editions:
         destination = output / "editions" / edition["tag"]
         destination.mkdir(parents=True)
         canonical = base_url + f"editions/{edition['tag']}/"
         (destination / "index.html").write_text(
-            render_page(editions, edition, "../../", canonical, repo, cover_file))
+            render_page(editions, edition, "../../", canonical, repo, cover_file, cover_size, cover_flat))
     (output / ".nojekyll").touch()
     print(f"Built download library with {len(editions)} edition(s): {output}")
 

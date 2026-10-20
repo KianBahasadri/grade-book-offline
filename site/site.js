@@ -7,27 +7,56 @@
   const downloads = document.querySelector("#downloads");
   const cover = document.querySelector(".cover-front");
   const opener = document.querySelector(".cover-opener");
+  const coverImage = opener.querySelector("img");
+  const coverTexture = document.createElement("canvas");
+  const coverContext = coverImage.classList.contains("cover-flat")
+    ? coverTexture.getContext("2d", { alpha: false }) : null;
   const caption = document.querySelector(".open-label");
   const closeBook = document.querySelector(".close-book");
-  const rotationControls = document.querySelector(".rotation-controls");
-  const resetView = document.querySelector(".reset-view");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const editionModal = document.querySelector("#editions-modal");
-  const editionTrigger = document.querySelector("#editions-trigger");
+  const support = document.querySelector(".support");
+  const supportDropdowns = [...support.querySelectorAll(".support-dropdown")];
+  const editions = document.querySelector("#editions");
   const defaultView = { x: 5, y: -22 };
   let rotation = { ...defaultView };
+  let zoom = 1;
+  let requestedZoom = 1;
   let gesture = null;
   let spinFrame = 0;
   let suppressClick = false;
   let focusTimer;
+
+  function drawCover() {
+    if (!coverContext || !coverImage.complete || !coverImage.naturalWidth) return;
+    // Prefilter the large original before the 3D projection. Directly shrinking
+    // it on the GPU aliases fine type and the barcode at oblique angles.
+    const width = opener.clientWidth * zoom;
+    const height = opener.clientHeight * zoom;
+    if (!width || !height) return;
+    const density = Math.min((devicePixelRatio || 1) * 1.5,
+      coverImage.naturalWidth / width, coverImage.naturalHeight / height);
+    const pixelsWide = Math.min(coverImage.naturalWidth, Math.ceil(width * density));
+    const pixelsHigh = Math.min(coverImage.naturalHeight, Math.ceil(height * density));
+    if (coverTexture.width === pixelsWide && coverTexture.height === pixelsHigh) return;
+    coverTexture.width = pixelsWide;
+    coverTexture.height = pixelsHigh;
+    coverContext.imageSmoothingEnabled = true;
+    coverContext.imageSmoothingQuality = "high";
+    coverContext.drawImage(coverImage, 0, 0, pixelsWide, pixelsHigh);
+    if (!coverTexture.isConnected) {
+      coverTexture.className = "cover-texture";
+      coverTexture.setAttribute("aria-hidden", "true");
+      opener.append(coverTexture);
+      coverImage.hidden = true;
+    }
+  }
+  coverImage.addEventListener("load", drawCover);
 
   function drawRotation() {
     rotation.y = ((rotation.y + 180) % 360 + 360) % 360 - 180;
     rotation.x = Math.max(-75, Math.min(75, rotation.x));
     book.style.setProperty("--rotation-x", rotation.x + "deg");
     book.style.setProperty("--rotation-y", rotation.y + "deg");
-    resetView.hidden = Math.abs(rotation.x - defaultView.x) < .1
-      && Math.abs(rotation.y - defaultView.y) < .1;
   }
   function stopSpin() {
     cancelAnimationFrame(spinFrame);
@@ -38,6 +67,19 @@
     stopSpin();
     rotation = { ...defaultView };
     drawRotation();
+  }
+  function setZoom(value) {
+    requestedZoom = Math.max(.55, Math.min(1.8, value));
+    fitZoom();
+  }
+  function fitZoom() {
+    const spread = book.classList.contains("is-open") && innerWidth > 860 ? 2 : 1;
+    const maximum = Math.max(.55, stage.clientWidth * .94 / (book.offsetWidth * spread));
+    zoom = Math.min(maximum, requestedZoom);
+    stage.style.setProperty("--book-scale", zoom);
+    // Reserve scrolling room for the model; its sticky caption stays above it.
+    stage.style.setProperty("--book-height", book.offsetHeight + "px");
+    drawCover();
   }
   function setOpen(open, focus = true) {
     clearTimeout(focusTimer);
@@ -50,22 +92,38 @@
     opener.setAttribute("aria-expanded", String(open));
     caption.firstChild.textContent = open ? "Close the book " : "Open the book ";
     caption.classList.toggle("is-open", open);
-    rotationControls.hidden = open;
     resetRotation();
+    fitZoom();
     if (focus) {
       if (!open) opener.focus({ preventScroll: true });
       else focusTimer = setTimeout(() => {
-        if (!editionModal.open) downloads.querySelector("a").focus({ preventScroll: true });
+        if (!supportDropdowns.some(dropdown => dropdown.open)) downloads.querySelector("a").focus({ preventScroll: true });
       }, reducedMotion.matches ? 0 : 1100);
     }
   }
   opener.addEventListener("click", () => setOpen(true));
   closeBook.addEventListener("click", () => setOpen(false));
   caption.addEventListener("click", () => setOpen(!book.classList.contains("is-open")));
-  resetView.addEventListener("click", resetRotation);
   root.classList.add("is-enhanced");
-  for (const element of [caption, closeBook, editionTrigger, document.querySelector(".page-utilities")]) element.hidden = false;
+  for (const element of [caption, closeBook, document.querySelector(".page-utilities"),
+                        document.querySelector(".edition-filter-controls")]) element.hidden = false;
   setOpen(location.hash === "#downloads", false);
+
+  stage.addEventListener("wheel", event => {
+    if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
+    event.preventDefault();
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stage.clientHeight : 1;
+    const delta = Math.max(-300, Math.min(300, event.deltaY * unit));
+    setZoom(zoom * Math.exp(-delta * .0015));
+  }, { passive: false });
+  stage.addEventListener("keydown", event => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (!["+", "=", "-", "0"].includes(event.key)) return;
+    event.preventDefault();
+    setZoom(event.key === "0" ? 1 : zoom * (event.key === "-" ? 1 / 1.15 : 1.15));
+  });
+  addEventListener("resize", fitZoom);
+  new ResizeObserver(fitZoom).observe(stage);
 
   // Keep native click/keyboard activation. Capture only once a real drag starts.
   stage.addEventListener("pointerdown", event => {
@@ -164,10 +222,12 @@
   addEventListener("hashchange", () => { if (location.hash === "#downloads") showDownloads(); });
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
-    if (editionModal.open) {
+    const expanded = supportDropdowns.find(dropdown => dropdown.classList.contains("is-expanded"));
+    if (expanded) {
       // Handle Escape before the search field consumes it to clear its value.
       event.preventDefault();
-      editionModal.close();
+      setDropdownOpen(expanded, false);
+      expanded.querySelector("summary").focus({ preventScroll: true });
     } else if (book.classList.contains("is-open")) setOpen(false);
   }, true);
 
@@ -178,14 +238,11 @@
   const clearFilters = document.querySelector(".clear-filters");
   const sortButton = document.querySelector(".sort-editions");
   const count = document.querySelector("#edition-count");
-  const fallback = document.querySelector("#editions-fallback");
-  const list = fallback.querySelector(".edition-list");
+  const list = document.querySelector(".edition-list");
   const normalize = text => text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
   const entries = [...list.children].map(element => ({ element, search: normalize(element.dataset.search),
     date: element.dataset.date, published: element.dataset.published }));
   let newestFirst = true;
-  document.querySelector("#edition-results").append(list);
-  fallback.hidden = true;
 
   function filterEditions() {
     // Quoted phrases and "build N" remain together; other words may occur anywhere.
@@ -222,24 +279,64 @@
     sortButton.textContent = newestFirst ? "Newest first" : "Oldest first";
     filterEditions();
   });
-  editionTrigger.addEventListener("click", () => {
-    clearTimeout(focusTimer);
-    stopSpin();
-    filterEditions();
-    editionModal.showModal();
-    root.classList.add("modal-open");
-    query.focus();
-  });
-  editionModal.querySelector("[data-close-dialog]").addEventListener("click", () => editionModal.close());
-  editionModal.addEventListener("click", event => {
-    const rect = editionModal.getBoundingClientRect();
-    if (event.target === editionModal && (event.clientX < rect.left || event.clientX > rect.right
-        || event.clientY < rect.top || event.clientY > rect.bottom)) editionModal.close();
-  });
-  editionModal.addEventListener("close", () => {
-    root.classList.remove("modal-open");
-    editionTrigger.focus({ preventScroll: true });
-  });
+  const dropdownAnimations = new WeakMap();
+  function setDropdownOpen(dropdown, expanded, focusSearch = false) {
+    if (dropdown.classList.contains("is-expanded") === expanded) return;
+    const panel = dropdown.querySelector(".support-panel");
+    const startHeight = dropdown.open ? panel.getBoundingClientRect().height : 0;
+    const currentStyle = getComputedStyle(panel);
+    const startOpacity = dropdown.open ? currentStyle.opacity : 0;
+    const startPaddingTop = dropdown.open ? currentStyle.paddingTop : "0px";
+    const startPaddingBottom = dropdown.open ? currentStyle.paddingBottom : "0px";
+    dropdownAnimations.get(dropdown)?.cancel();
+    dropdown.classList.remove("is-animating");
+    if (expanded) {
+      clearTimeout(focusTimer);
+      stopSpin();
+      for (const other of supportDropdowns) if (other !== dropdown) setDropdownOpen(other, false);
+      dropdown.open = true;
+      if (dropdown === editions) filterEditions();
+    }
+    dropdown.classList.toggle("is-expanded", expanded);
+    dropdown.querySelector("summary").setAttribute("aria-expanded", String(expanded));
+    panel.inert = !expanded;
+    document.body.classList.toggle("support-expanded",
+      supportDropdowns.some(item => item.classList.contains("is-expanded")));
+    const endHeight = expanded ? panel.getBoundingClientRect().height : 0;
+    const finish = () => {
+      dropdown.classList.remove("is-animating");
+      dropdown.open = expanded;
+      dropdownAnimations.delete(dropdown);
+      if (expanded && focusSearch && dropdown === editions) query.focus({ preventScroll: true });
+    };
+    if (reducedMotion.matches) { finish(); return; }
+    dropdown.classList.add("is-animating");
+    const animation = panel.animate([
+      { height: startHeight + "px", opacity: startOpacity, paddingTop: startPaddingTop,
+        paddingBottom: startPaddingBottom, transform: expanded ? "translateY(-4px)" : "none" },
+      { height: endHeight + "px", opacity: expanded ? 1 : 0, paddingTop: expanded ? "8px" : "0px",
+        paddingBottom: expanded ? "16px" : "0px", transform: expanded ? "none" : "translateY(-4px)" },
+    ], { duration: 280, easing: "cubic-bezier(.22,.8,.2,1)" });
+    dropdownAnimations.set(dropdown, animation);
+    animation.onfinish = finish;
+  }
+  for (const dropdown of supportDropdowns) {
+    // Keep native details as the no-JavaScript fallback; animate both directions.
+    dropdown.removeAttribute("name");
+    dropdown.querySelector(".support-panel").inert = true;
+    dropdown.querySelector("summary").setAttribute("aria-expanded", "false");
+    dropdown.querySelector("summary").addEventListener("click", event => {
+      event.preventDefault();
+      setDropdownOpen(dropdown, !dropdown.classList.contains("is-expanded"), event.detail === 0);
+    });
+  }
+  function dismissSupport(event) {
+    if (!support.contains(event.target)) {
+      for (const dropdown of supportDropdowns) setDropdownOpen(dropdown, false);
+    }
+  }
+  document.addEventListener("pointerdown", dismissSupport);
+  document.addEventListener("focusin", dismissSupport);
 
   const themeButton = document.querySelector(".theme-toggle");
   function setTheme(theme) {
@@ -281,8 +378,6 @@
       tooltipTimer = setTimeout(() => {
         tooltipTarget = button;
         tooltip.textContent = button.dataset.tooltip;
-        // Tooltips inside a modal must be in that modal's top layer.
-        (button.closest("dialog") || document.body).append(tooltip);
         tooltip.hidden = false;
         button.setAttribute("aria-describedby", "tooltip");
         positionTooltip();

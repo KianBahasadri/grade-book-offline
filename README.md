@@ -75,10 +75,13 @@ job receives `contents: write`.
 
 The [GitHub Pages website](https://kianbahasadri.github.io/grade-book-offline/)
 is built from complete published releases. Drag the 3D book with your mouse to
-rotate it, or use the arrow keys while its cover is focused. Click to open it
-and choose a download. The model's text and images cannot be selected while
-dragging. “Other editions” opens a searchable dialog with dates, build numbers,
-release IDs, and release notes, plus date filters and newest/oldest sorting.
+rotate it, or use the arrow keys while its cover is focused. Scroll over the
+book to zoom in or out; the +/− keys also zoom, and 0 restores its original size.
+The open/close button stays above the model as it grows. Click to open it and
+choose a download. The model's text and images cannot be selected while
+dragging. “Other editions” and “About & help” expand smoothly as plain text
+beneath the title. Edition search includes dates, build numbers, release IDs, and release
+notes, plus date filters and newest/oldest sorting.
 The layout adapts to phones, supports keyboard navigation and reduced motion,
 and provides light and dark themes. Downloads remain visible without JavaScript.
 Each edition has a permanent page with links to its own files.
@@ -86,6 +89,15 @@ Each edition has a permanent page with links to its own files.
 `site/` holds the HTML template, styles, book interaction, and locally hosted font.
 `scripts/site.py` generates the website using the GitHub CLI to read release
 metadata. It takes the cover from the latest release's verified HTML archive.
+When that cover matches the recorded publisher preview, the website uses a
+3× render of the publisher's original HTML artwork. Book surfaces render at
+their zoomed size, with extra samples on standard-density displays, to keep
+text and rotated edges sharp. A canvas filters the cover for the current zoom
+and screen density; open pages retain native text. The high-resolution cover's source and checksums
+are recorded in `site/cover-render.json`; a changed publisher cover falls back
+to the new release image until its high-resolution render is refreshed.
+To refresh the artwork, run `python -m scripts.render_cover` (optionally with
+`--browser /path/to/chromium`) and review the generated image and metadata.
 Preview it locally with:
 
 ```bash
