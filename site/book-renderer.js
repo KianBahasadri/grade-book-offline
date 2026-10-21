@@ -60,10 +60,18 @@ window.createBookRenderer = ({ stage, book, image }) => {
         float frequency = 36.0;
         float detail = 1.0 - smoothstep(.15, .65, fwidth(depth * frequency));
         rgb -= .018 * detail * (.5 + .5 * cos(depth * frequency * 6.28318));
+        rgb *= .90 + .10 * smoothstep(0.0, .05, texcoord.x);
       } else if (surface == 3) {
         rgb = texture(spine, texcoord).rgb;
+      } else if (surface == 4) {
+        rgb = ink * .62;
       } else {
         rgb = ink * mix(.92, 1.02, texcoord.x);
+        if (surfaceNormal.z < -.5) {
+          float groove = 1.0 - .14 * exp(-pow((texcoord.x - .027) / .012, 2.0));
+          float lip = .035 * exp(-pow((texcoord.x - .014) / .005, 2.0));
+          rgb = rgb * groove + lip;
+        }
       }
       float light = .94 + .06 * max(0.0, dot(normalize(surfaceNormal), normalize(vec3(-.3, -.45, 1.0))));
       color = vec4(rgb * light, 1.0);
@@ -151,9 +159,9 @@ window.createBookRenderer = ({ stage, book, image }) => {
       label.height = 2048;
       const context = label.getContext("2d");
       const gradient = context.createLinearGradient(0, 0, 128, 0);
-      gradient.addColorStop(0, "#142640");
-      gradient.addColorStop(.5, "#294575");
-      gradient.addColorStop(1, "#172e50");
+      gradient.addColorStop(0, "#1f3961");
+      gradient.addColorStop(.5, "#284675");
+      gradient.addColorStop(1, "#223e69");
       context.fillStyle = gradient;
       context.fillRect(0, 0, 128, 2048);
       context.translate(64, 120);
@@ -182,44 +190,103 @@ window.createBookRenderer = ({ stage, book, image }) => {
     const quad = (points, normal, uv, material) => {
       for (const i of [0, 1, 2, 0, 2, 3]) vertex(points[i], normal, uv[i], material);
     };
-    const board = (bottom, top, frontMaterial) => {
-      const ring = [];
+    const uv = point => [point[0] / width + .5, point[1] / height + .5];
+    const halfSpan = 12, bulge = 5.6, shoulder = 4.8, thickness = 2;
+    const spineStart = -width / 2 + bulge - 1.2;
+    const board = (bottom, top, frontMaterial, innerSide) => {
+      const ring = [[spineStart, -height / 2]];
       const radius = 4;
       for (const [cx, cy, start] of [[width / 2 - radius, -height / 2 + radius, -Math.PI / 2],
-        [width / 2 - radius, height / 2 - radius, 0], [-width / 2 + radius, height / 2 - radius, Math.PI / 2],
-        [-width / 2 + radius, -height / 2 + radius, Math.PI]]) {
+        [width / 2 - radius, height / 2 - radius, 0]]) {
         for (let i = 0; i <= 12; i++) {
           const angle = start + i / 12 * Math.PI / 2;
           ring.push([cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius]);
         }
       }
-      const uv = point => [point[0] / width + .5, point[1] / height + .5];
+      ring.push([spineStart, height / 2]);
+      const topMaterial = innerSide === "top" ? 4 : frontMaterial;
+      const bottomMaterial = innerSide === "bottom" ? 4 : 1;
       for (let i = 0; i < ring.length; i++) {
         const a = ring[i], b = ring[(i + 1) % ring.length];
-        for (const [z, normal, material] of [[top, [0, 0, 1], frontMaterial], [bottom, [0, 0, -1], 1]]) {
+        for (const [z, normal, material] of [[top, [0, 0, 1], topMaterial], [bottom, [0, 0, -1], bottomMaterial]]) {
           vertex([0, 0, z], normal, [.5, .5], material);
           vertex([...a, z], normal, uv(a), material);
           vertex([...b, z], normal, uv(b), material);
         }
+        if (a[0] === spineStart && b[0] === spineStart) continue;
         const dx = b[0] - a[0], dy = b[1] - a[1];
         if (Math.hypot(dx, dy) < .001) continue;
         const length = Math.hypot(dx, dy);
+        const uvA = uv(a), uvB = uv(b);
         quad([[...a, bottom], [...b, bottom], [...b, top], [...a, top]], [dy / length, -dx / length, 0],
-          [[0, 0], [1, 0], [1, 1], [0, 1]], 1);
+          [uvA, uvB, uvB, uvA], 1);
       }
     };
-    board(-22, -20, 1);
-    board(0, 2, 0);
-    const left = -width / 2 + 3, right = width / 2 - 4;
-    const top = -height / 2 + 4, bottom = height / 2 - 4;
-    const uv = [[0, 0], [1, 0], [1, 1], [0, 1]];
-    quad([[left, top, -20], [right, top, -20], [right, top, 0], [left, top, 0]], [0, -1, 0], uv, 2);
-    quad([[right, bottom, -20], [left, bottom, -20], [left, bottom, 0], [right, bottom, 0]], [0, 1, 0], uv, 2);
-    quad([[right, top, -20], [right, bottom, -20], [right, bottom, 0], [right, top, 0]], [1, 0, 0], uv, 2);
+    board(-22, -20, 1, "top");
+    board(0, 2, 0, "bottom");
+
+    const zMid = -10;
+    const crown = (bulge * bulge - shoulder * shoulder + (halfSpan - shoulder) ** 2) / (2 * (bulge - shoulder));
+    const transition = Math.asin((halfSpan - shoulder) / (crown - shoulder));
+    const angles = [];
+    for (let i = 0; i <= 10; i++) angles.push(-Math.PI / 2 + i / 10 * (Math.PI / 2 - transition));
+    for (let i = 1; i < 16; i++) angles.push(-transition + i / 16 * (2 * transition));
+    for (let i = 0; i <= 10; i++) angles.push(transition + i / 10 * (Math.PI / 2 - transition));
+
+    const spineProfile = angles.map((angle, index) => {
+      const nx = -Math.cos(angle), nz = Math.sin(angle);
+      const [cx, cz, radius] = angle < -transition
+        ? [spineStart, zMid - (halfSpan - shoulder), shoulder]
+        : angle > transition
+          ? [spineStart, zMid + (halfSpan - shoulder), shoulder]
+          : [spineStart - bulge + crown, zMid, crown];
+      return {
+        u: index / (angles.length - 1),
+        xOut: cx + nx * radius,
+        zOut: cz + nz * radius,
+        xIn: cx + nx * (radius - thickness),
+        zIn: cz + nz * (radius - thickness),
+        nx,
+        nz
+      };
+    });
+
+    const boardTop = -height / 2, boardBottom = height / 2;
+    const top = -height / 2 + 2.2, bottom = height / 2 - 2.2;
+    const right = width / 2 - 3;
+
     // The spine faces left: its left edge is the back board when seen from
     // outside. Reversing these U coordinates would mirror every letter.
-    quad([[-width / 2, top, 2], [-width / 2, top, -22], [-width / 2, bottom, -22], [-width / 2, bottom, 2]], [-1, 0, 0],
-      [[1, 0], [0, 0], [0, 1], [1, 1]], 3);
+    for (let i = 0; i < spineProfile.length - 1; i++) {
+      const a = spineProfile[i], b = spineProfile[i + 1];
+      const p0 = [b.xOut, boardTop, b.zOut], p1 = [a.xOut, boardTop, a.zOut];
+      const p2 = [a.xOut, boardBottom, a.zOut], p3 = [b.xOut, boardBottom, b.zOut];
+      const nB = [b.nx, 0, b.nz], nA = [a.nx, 0, a.nz];
+      const uv0 = [b.u, 0], uv1 = [a.u, 0], uv2 = [a.u, 1], uv3 = [b.u, 1];
+      for (const [p, n, t] of [[p0, nB, uv0], [p1, nA, uv1], [p2, nA, uv2], [p0, nB, uv0], [p2, nA, uv2], [p3, nB, uv3]]) {
+        vertex(p, n, t, 3);
+      }
+      const uvOutA = uv([a.xOut, boardTop]), uvOutB = uv([b.xOut, boardTop]);
+      const uvInA = uv([a.xIn, boardTop]), uvInB = uv([b.xIn, boardTop]);
+      quad([[a.xOut, boardTop, a.zOut], [a.xIn, boardTop, a.zIn], [b.xIn, boardTop, b.zIn], [b.xOut, boardTop, b.zOut]],
+        [0, -1, 0], [uvOutA, uvInA, uvInB, uvOutB], 1);
+      quad([[b.xOut, boardBottom, b.zOut], [b.xIn, boardBottom, b.zIn], [a.xIn, boardBottom, a.zIn], [a.xOut, boardBottom, a.zOut]],
+        [0, 1, 0], [uvOutB, uvInB, uvInA, uvOutA], 1);
+      const nIn = [-a.nx, 0, -a.nz];
+      quad([[a.xIn, boardTop, a.zIn], [b.xIn, boardTop, b.zIn], [b.xIn, top, b.zIn], [a.xIn, top, a.zIn]],
+        nIn, [[a.u, 1], [b.u, 1], [b.u, 0], [a.u, 0]], 4);
+      quad([[b.xIn, bottom, b.zIn], [b.xIn, boardBottom, b.zIn], [a.xIn, boardBottom, a.zIn], [a.xIn, bottom, a.zIn]],
+        nIn, [[b.u, 0], [b.u, 1], [a.u, 1], [a.u, 0]], 4);
+
+      const depthA = (a.zIn + 20) / 20, depthB = (b.zIn + 20) / 20;
+      quad([[a.xIn, top, a.zIn], [right, top, a.zIn], [right, top, b.zIn], [b.xIn, top, b.zIn]],
+        [0, -1, 0], [[0, depthA], [1, depthA], [1, depthB], [0, depthB]], 2);
+      quad([[b.xIn, bottom, b.zIn], [right, bottom, b.zIn], [right, bottom, a.zIn], [a.xIn, bottom, a.zIn]],
+        [0, 1, 0], [[0, depthB], [1, depthB], [1, depthA], [0, depthA]], 2);
+    }
+
+    const pageUv = [[0, 0], [1, 0], [1, 1], [0, 1]];
+    quad([[right, top, -20], [right, bottom, -20], [right, bottom, 0], [right, top, 0]], [1, 0, 0], pageUv, 2);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
     vertexCount = data.length / 9;
@@ -237,7 +304,7 @@ window.createBookRenderer = ({ stage, book, image }) => {
     const offset = (parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom)) / 2;
     const center = [stage.clientWidth / 2, stage.clientHeight / 2];
     const points = [];
-    for (const x of [-width / 2, width / 2]) for (const y of [-height / 2, height / 2]) for (const z of [-22, 2]) {
+    for (const x of [-width / 2 - 2, width / 2]) for (const y of [-height / 2, height / 2]) for (const z of [-22, 2]) {
       const p = matrix.transformPoint(new DOMPoint(x * zoom, y * zoom, z * zoom));
       const w = 1 - p.z / perspective;
       points.push([center[0] + p.x / w, center[1] + (p.y + offset) / w]);
