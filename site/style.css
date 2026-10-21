@@ -76,7 +76,7 @@ main { padding: 0 24px; }
 .cover-opener::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg,rgba(0,0,0,.28),transparent 1.5%,rgba(255,255,255,.12) 2%,rgba(0,0,0,.15) 3%,transparent 5%,transparent 96%,rgba(255,255,255,.08)); }
 /* A thin cloth turn-in surrounds the pastedown at the three outer edges.
    The lining runs into the hinge, where paper shading defines the fold. */
-.cover-inside { padding: 45px 44px 45px 45px; transform: rotateY(180deg); display: flex; flex-direction: column; border-radius: 2px 0 0 2px; border: 3px solid transparent; border-right: 0; background: linear-gradient(90deg,#f7f8f5 90%,#e9ebe4 98%,#d9dcd3) padding-box, linear-gradient(90deg,#2d4c7a 0,#233e67 3px,#233e67 90%,#192d4b 97%,#0b1628 100%) border-box; box-shadow: inset 1px 0 rgba(255,255,255,.35); }
+.cover-inside { padding: 45px 44px 45px 45px; transform: rotateY(180deg); display: flex; flex-direction: column; border-radius: 2px 0 0 2px; border: solid transparent; border-width: 3px 0 3px 5px; background: linear-gradient(90deg,#f7f8f5 90%,#e9ebe4 98%,#d9dcd3) padding-box, linear-gradient(90deg,#2d4c7a 0,#233e67 5px,#233e67 90%,#192d4b 97%,#0b1628 100%) border-box; box-shadow: inset 1px 0 rgba(255,255,255,.35); }
 .inside-title { font-size: 56px; line-height: 1; font-weight: 500; letter-spacing: -.05em; margin: 40px 0 20px; }
 .inside-subtitle { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0; }
 .inside-colophon { margin-top: auto; font-size: 11px; color: var(--muted); }
@@ -103,7 +103,7 @@ main { padding: 0 24px; }
 .is-enhanced .download-page { display: none; }
 .is-enhanced .book.is-open { --book-detail: 1; transform: translateX(50%) rotateX(0) rotateY(0) rotateZ(0); }
 .is-enhanced .book.is-open .front-board { transform: rotateY(-180deg); }
-.is-enhanced .book.is-open .download-page { display: flex; margin: 0; min-height: calc(var(--book-width) * 1.415); padding: 25px 33px 25px 32px; border: 3px solid transparent; border-left: 0; background: linear-gradient(90deg,#d9dbd5 0,#f7f8f5 5%,#f7f8f5 96%,#e7e9e1 100%) padding-box, linear-gradient(90deg,#0b1628 0,#233e67 5%,#233e67 96%,#162844 100%) border-box; }
+.is-enhanced .book.is-open .download-page { display: flex; margin: 0; min-height: calc(var(--book-width) * 1.415); padding: 25px 33px 25px 32px; border: solid transparent; border-width: 3px 5px 3px 0; background: linear-gradient(90deg,#d9dbd5 0,#f7f8f5 5%,#f7f8f5 96%,#e7e9e1 100%) padding-box, linear-gradient(90deg,#0b1628 0,#233e67 5%,#233e67 96%,#162844 100%) border-box; }
 .is-enhanced .book.is-open .cover-opener { pointer-events: none; }
 .is-enhanced .book.is-open .book-spine { visibility: hidden; }
 .is-enhanced .open-label.is-open svg { transform: rotate(180deg); }
