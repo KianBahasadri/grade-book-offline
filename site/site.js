@@ -25,6 +25,8 @@
   let spinFrame = 0;
   let suppressClick = false;
   let focusTimer;
+  let settleTimer;
+  const renderer = window.createBookRenderer?.({ stage, book, image: coverImage });
 
   function drawCover() {
     if (!coverContext || !coverImage.complete || !coverImage.naturalWidth) return;
@@ -57,6 +59,7 @@
     rotation.x = Math.max(-75, Math.min(75, rotation.x));
     book.style.setProperty("--rotation-x", rotation.x + "deg");
     book.style.setProperty("--rotation-y", rotation.y + "deg");
+    renderer?.invalidate(book.classList.contains("is-rotating") ? 0 : 1050);
   }
   function stopSpin() {
     cancelAnimationFrame(spinFrame);
@@ -80,9 +83,20 @@
     // Reserve scrolling room for the model; its sticky caption stays above it.
     stage.style.setProperty("--book-height", book.offsetHeight + "px");
     drawCover();
+    renderer?.invalidate();
   }
   function setOpen(open, focus = true) {
     clearTimeout(focusTimer);
+    clearTimeout(settleTimer);
+    renderer?.suspend();
+    const wasFlat = book.classList.contains("is-open-flat");
+    if (wasFlat) book.classList.add("is-restoring");
+    book.classList.remove("is-open-flat");
+    // Restore the identical 3D pose before starting the closing transition.
+    if (wasFlat) {
+      void book.offsetWidth;
+      book.classList.remove("is-restoring");
+    }
     stopSpin();
     gesture = null;
     book.classList.toggle("is-open", open);
@@ -94,6 +108,12 @@
     caption.classList.toggle("is-open", open);
     resetRotation();
     fitZoom();
+    const settle = () => {
+      if (open) book.classList.add("is-open-flat");
+      else renderer?.resume();
+    };
+    if (!focus || reducedMotion.matches) settle();
+    else settleTimer = setTimeout(settle, 1120);
     if (focus) {
       if (!open) opener.focus({ preventScroll: true });
       else focusTimer = setTimeout(() => {
@@ -245,9 +265,9 @@
   let newestFirst = true;
 
   function filterEditions() {
-    // Quoted phrases and "build N" remain together; other words may occur anywhere.
-    const terms = [...normalize(query.value).matchAll(/"([^"]+)"|(build\s+\d+)|([^\s"]+)/g)]
-      .map(match => match[1] || match[2] || match[3]);
+    // Quoted phrases remain together; other words may occur anywhere.
+    const terms = [...normalize(query.value).matchAll(/"([^"]+)"|([^\s"]+)/g)]
+      .map(match => match[1] || match[2]);
     const invalidDates = Boolean(from.value && through.value && from.value > through.value);
     document.querySelector("#date-error").hidden = !invalidDates;
     through.setAttribute("aria-invalid", String(invalidDates));
@@ -258,7 +278,7 @@
     for (const entry of entries) {
       const matches = !invalidDates && (!from.value || entry.date >= from.value)
         && (!through.value || entry.date <= through.value)
-        && terms.every(term => /^(build )?\d+$/.test(term)
+        && terms.every(term => /^\d+$/.test(term)
           ? new RegExp(`\\b${term}\\b`).test(entry.search) : entry.search.includes(term));
       entry.element.hidden = !matches;
       visible += Number(matches);

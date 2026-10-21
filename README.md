@@ -80,7 +80,7 @@ book to zoom in or out; the +/− keys also zoom, and 0 restores its original si
 The open/close button stays above the model as it grows. Click to open it and
 choose a download. The model's text and images cannot be selected while
 dragging. “Other editions” and “About & help” expand smoothly as plain text
-beneath the title. Edition search includes dates, build numbers, release IDs, and release
+beneath the title. Edition search includes dates, release IDs, and release
 notes, plus date filters and newest/oldest sorting.
 The layout adapts to phones, supports keyboard navigation and reduced motion,
 and provides light and dark themes. Downloads remain visible without JavaScript.
@@ -90,10 +90,13 @@ Each edition has a permanent page with links to its own files.
 `scripts/site.py` generates the website using the GitHub CLI to read release
 metadata. It takes the cover from the latest release's verified HTML archive.
 When that cover matches the recorded publisher preview, the website uses a
-3× render of the publisher's original HTML artwork. Book surfaces render at
-their zoomed size, with extra samples on standard-density displays, to keep
-text and rotated edges sharp. A canvas filters the cover for the current zoom
-and screen density; open pages retain native text. The high-resolution cover's source and checksums
+3× render of the publisher's original HTML artwork. A local WebGL 2 renderer
+draws the closed book with rounded boards, multisampled edges, extra resolution
+for the current display, and mipmapped, anisotropic cover filtering. It redraws
+during interaction and stops when the book is still. The CSS model handles the
+opening animation and provides a fallback when WebGL is unavailable. Once open,
+the spread leaves the 3D layers so live text and SVG icons render directly at
+the selected zoom. The high-resolution cover's source and checksums
 are recorded in `site/cover-render.json`; a changed publisher cover falls back
 to the new release image until its high-resolution render is refreshed.
 To refresh the artwork, run `python -m scripts.render_cover` (optionally with

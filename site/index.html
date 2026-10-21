@@ -11,6 +11,7 @@
   <link rel="icon" href="{{PREFIX}}favicon.svg?v={{ASSET_VERSION}}" type="image/svg+xml">
   <link rel="stylesheet" href="{{PREFIX}}style.css?v={{ASSET_VERSION}}">
   <link rel="canonical" href="{{CANONICAL}}">
+  <script src="{{PREFIX}}book-renderer.js?v={{ASSET_VERSION}}" defer></script>
   <script src="{{PREFIX}}site.js?v={{ASSET_VERSION}}" defer></script>
   <title>{{PAGE_TITLE}}</title>
 </head>
@@ -25,7 +26,7 @@
           <div class="edition-filter-controls" hidden>
             <div class="edition-search">
               <svg aria-hidden="true" focusable="false"><use href="#icon-search"></use></svg>
-              <input id="edition-query" type="search" aria-label="Search editions" placeholder="Date, build, release ID, or notes" autocomplete="off" aria-controls="edition-results" aria-describedby="edition-search-help">
+              <input id="edition-query" type="search" aria-label="Search editions" placeholder="Date, release ID, or notes" autocomplete="off" aria-controls="edition-results" aria-describedby="edition-search-help">
               <button class="icon-button clear-search" type="button" aria-label="Clear search" data-tooltip="Clear search" hidden><svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg></button>
             </div>
             <p id="edition-search-help">Search words together, or put an exact phrase in quotes.</p>
@@ -79,7 +80,6 @@
         <div class="book-spine" aria-hidden="true"><span>The GRADE Book</span></div>
         <section class="download-page paper" id="downloads" aria-labelledby="downloads-title" tabindex="-1">
           <div class="page-heading">
-            <p class="overline">YOURS TO KEEP</p>
             <button class="icon-button close-book" type="button" aria-label="Close book" data-tooltip="Close book" hidden>
               <svg aria-hidden="true" focusable="false"><use href="#icon-x"></use></svg>
             </button>

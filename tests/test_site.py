@@ -82,12 +82,20 @@ class WebsiteTests(unittest.TestCase):
                 editions_from_releases([] if failure == "absent" else [current],
                                        current["tag_name"], REPO)
 
-    def test_rebuilds_on_same_day_have_distinct_labels(self):
+    def test_rebuilds_on_same_day_show_only_dates_and_keep_separate_downloads(self):
         first = release()
         second = release("edition-2026-10-20-aaaa-2.1", "2026-10-20T19:00:00Z")
         editions = editions_from_releases([first, second], second["tag_name"], REPO)
-        self.assertEqual(len({item["label"] for item in editions}), 2)
-        self.assertIn("build 2", editions[0]["label"])
+        self.assertEqual(len(editions), 2)
+        self.assertEqual({item["label"] for item in editions}, {"20 October 2026"})
+        self.assertEqual(len({item["assets"]["pdf"]["url"] for item in editions}), 2)
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "website"
+            build_site(editions, output, BASE_URL, REPO)
+            pages = list(output.rglob("*.html"))
+            self.assertEqual(len(pages), 3)
+            for page in pages:
+                self.assertNotRegex(page.read_text(), r"\bbuild \d+\b")
 
     def test_static_downloads_archives_and_relative_paths_work_without_javascript(self):
         current = release()

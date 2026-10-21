@@ -76,7 +76,7 @@ def editions_from_releases(releases, latest_tag, repo):
         captured = datetime.fromisoformat(match[1])
         label = f"{captured.day} {captured.strftime('%B %Y')}"
         editions.append({
-            "tag": tag, "date": label, "capture_date": captured.date().isoformat(),
+            "tag": tag, "date": label, "label": label, "capture_date": captured.date().isoformat(),
             "timestamp": published.isoformat(), "title": release.get("name") or "The GRADE Book",
             "notes": release.get("body") or "No release notes were provided.",
             "latest": tag == latest_tag,
@@ -88,13 +88,6 @@ def editions_from_releases(releases, latest_tag, repo):
     if not any(item["latest"] for item in editions):
         raise ValueError("No complete latest book edition found; keeping existing site")
     editions.sort(key=lambda item: (item["latest"], item["timestamp"]), reverse=True)
-    # Forced rebuilds can share an edition date; retain each and make it distinct.
-    for edition in editions:
-        same_date = [item for item in editions if item["date"] == edition["date"]]
-        edition["label"] = edition["date"]
-        if len(same_date) > 1:
-            number = sorted(same_date, key=lambda item: (item["timestamp"], item["tag"])).index(edition) + 1
-            edition["label"] += f" · build {number}"
     return editions
 
 
@@ -156,7 +149,7 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file,
     values = {
         "PREFIX": prefix, "CANONICAL": escape(canonical, quote=True),
         "ASSET_VERSION": hashlib.sha256(b"".join((ROOT / "site" / name).read_bytes()
-            for name in ("style.css", "site.js", "favicon.svg"))).hexdigest()[:12],
+            for name in ("style.css", "book-renderer.js", "site.js", "favicon.svg"))).hexdigest()[:12],
         "PAGE_TITLE": "The GRADE Book — download for offline reading" if selected["latest"]
         else f"The GRADE Book — {selected['label']} edition",
         "EDITION_STATUS": "Latest edition" if selected["latest"] else "Earlier edition",
@@ -205,7 +198,7 @@ def build_site(editions, output, base_url, repo, cover=None):
     if output.exists() and any(output.iterdir()):
         raise ValueError(f"Output directory must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
-    for name in ["style.css", "site.js", "favicon.svg", "plex-sans-latin.woff2",
+    for name in ["style.css", "book-renderer.js", "site.js", "favicon.svg", "plex-sans-latin.woff2",
                  "FONT-LICENSE.txt", "LUCIDE-LICENSE.txt"]:
         shutil.copyfile(ROOT / "site" / name, output / name)
     cover_file, cover_bytes = cover or ("official-cover.png", (ROOT / "site/official-cover.png").read_bytes())

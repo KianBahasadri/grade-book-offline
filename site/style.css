@@ -50,8 +50,8 @@ main { padding: 0 24px; }
 .book-stage { --book-width: 384px; --book-height: calc(var(--book-width) * 1.415); --book-scale: 1; --book-detail: 2; position: relative; z-index: 0; display: grid; place-items: center; perspective: 1800px; padding: 40px 0 32px; min-height: max(620px,calc(var(--book-height) * var(--book-scale) + 72px)); transition: --book-scale 120ms ease-out; }
 .book { position: relative; width: var(--book-width); min-height: calc(var(--book-width) * 1.415); transform-style: preserve-3d; }
 .paper { color-scheme: light; --ink: #172027; --ink-strong: #0a0d0f; --muted: #536168; --surface: #f7f8f5; --surface-raised: #fff; --line: #c8d1d0; --focus: #005fcc; color: var(--ink); background: #f7f8f5; }
-.download-page { position: relative; margin: 4px 4px 4px 0; min-height: calc(var(--book-width) * 1.415 - 8px); padding: 24px 32px; display: flex; flex-direction: column; border-radius: 0 4px 4px 0; background: linear-gradient(90deg,#d9dbd5 0,#f7f8f5 5%,#f7f8f5 96%,#e7e9e1 100%); }
-.page-heading { display: flex; align-items: center; justify-content: space-between; min-height: 36px; margin-bottom: 4px; }
+.download-page { position: relative; margin: 4px 4px 4px 0; min-height: calc(var(--book-width) * 1.415 - 8px); padding: 24px 32px; display: flex; flex-direction: column; border-radius: 0 2px 2px 0; background: linear-gradient(90deg,#d9dbd5 0,#f7f8f5 5%,#f7f8f5 96%,#e7e9e1 100%); }
+.page-heading { display: flex; align-items: center; justify-content: flex-end; min-height: 36px; margin-bottom: 4px; }
 .overline { color: var(--muted); font-size: 10px; letter-spacing: .15em; font-weight: 500; margin: 0; }
 .download-page h2 { font-size: 32px; line-height: 1.15; letter-spacing: -.04em; font-weight: 500; margin: 0; }
 .page-intro { font-size: 13px; color: var(--muted); margin: 8px 0 16px; }
@@ -74,7 +74,9 @@ main { padding: 0 24px; }
 .cover-opener img.cover-flat { width: 100%; height: 100%; left: 0; top: 0; }
 .cover-texture { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .cover-opener::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg,rgba(0,0,0,.28),transparent 1.5%,rgba(255,255,255,.12) 2%,rgba(0,0,0,.15) 3%,transparent 5%,transparent 96%,rgba(255,255,255,.08)); }
-.cover-inside { padding: 40px; transform: rotateY(180deg); display: flex; flex-direction: column; background: linear-gradient(90deg,#f7f8f5 90%,#dddfd8); border: 8px solid #233e67; border-right-width: 4px; }
+/* A thin cloth turn-in surrounds the pastedown at the three outer edges.
+   The lining runs into the hinge, where paper shading defines the fold. */
+.cover-inside { padding: 45px 44px 45px 45px; transform: rotateY(180deg); display: flex; flex-direction: column; border-radius: 2px 0 0 2px; border: 3px solid transparent; border-right: 0; background: linear-gradient(90deg,#f7f8f5 90%,#e9ebe4 98%,#d9dcd3) padding-box, linear-gradient(90deg,#2d4c7a 0,#233e67 3px,#233e67 90%,#192d4b 97%,#0b1628 100%) border-box; box-shadow: inset 1px 0 rgba(255,255,255,.35); }
 .inside-title { font-size: 56px; line-height: 1; font-weight: 500; letter-spacing: -.05em; margin: 40px 0 20px; }
 .inside-subtitle { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0; }
 .inside-colophon { margin-top: auto; font-size: 11px; color: var(--muted); }
@@ -101,10 +103,28 @@ main { padding: 0 24px; }
 .is-enhanced .download-page { display: none; }
 .is-enhanced .book.is-open { --book-detail: 1; transform: translateX(50%) rotateX(0) rotateY(0) rotateZ(0); }
 .is-enhanced .book.is-open .front-board { transform: rotateY(-180deg); }
-.is-enhanced .book.is-open .download-page { display: flex; }
+.is-enhanced .book.is-open .download-page { display: flex; margin: 0; min-height: calc(var(--book-width) * 1.415); padding: 25px 33px 25px 32px; border: 3px solid transparent; border-left: 0; background: linear-gradient(90deg,#d9dbd5 0,#f7f8f5 5%,#f7f8f5 96%,#e7e9e1 100%) padding-box, linear-gradient(90deg,#0b1628 0,#233e67 5%,#233e67 96%,#162844 100%) border-box; }
 .is-enhanced .book.is-open .cover-opener { pointer-events: none; }
 .is-enhanced .book.is-open .book-spine { visibility: hidden; }
 .is-enhanced .open-label.is-open svg { transform: rotate(180deg); }
+/* Keep the fully open spread in ordinary layout. Live type and SVG icons are
+   painted at the current CSS zoom, without a retained 3D layer being enlarged. */
+.is-enhanced .book.is-open-flat {
+  transform: none; scale: none; transform-style: flat;
+  justify-self: start; margin: 0; left: 50%; transition: none;
+}
+.is-enhanced .book.is-restoring, .is-enhanced .book.is-restoring .front-board { transition: none; }
+.is-enhanced .book.is-open-flat .front-board {
+  left: calc(-1 * var(--book-width)); right: auto; width: var(--book-width);
+  transform: none; transform-style: flat; transition: none;
+}
+.is-open-flat .cover-front, .is-open-flat .back-board, .is-open-flat .page-edges,
+.is-open-flat .page-top, .is-open-flat .page-bottom, .is-open-flat::before { display: none; }
+.is-open-flat .cover-inside { transform: none; }
+.book-renderer { position: absolute; pointer-events: none; }
+.has-book-renderer .book:not(.is-open)::before,
+.has-book-renderer .book:not(.is-open) > :not(.download-page) { opacity: 0; }
+.has-book-renderer:has(.cover-opener:focus-visible) .book-renderer { outline: 2px solid var(--focus); outline-offset: 4px; }
 html:not(.is-enhanced) .front-board { display: none; }
 .support { position: absolute; top: 64px; left: 32px; display: flex; flex-direction: column; gap: 0; width: min(320px,calc(100vw - 64px)); }
 .support-dropdown { min-width: 0; }
@@ -187,12 +207,15 @@ details[open] > summary svg { transform: rotate(180deg); }
 @media (max-width: 860px) {
   .book-stage { --book-width: min(340px,calc(100vw - 64px)); min-height: calc(var(--book-height) * var(--book-scale) + 56px); padding-top: 32px; padding-bottom: 24px; }
   .is-enhanced .book.is-open { transform: none; }
+  .is-enhanced .book.is-open-flat { justify-self: center; margin: 0; left: auto; }
+  .is-enhanced .book.is-open-flat .front-board { display: none; }
   .is-enhanced .book.is-open .front-board { transform: rotateY(-90deg); visibility: hidden; transition: transform 1000ms cubic-bezier(.22,.8,.2,1), visibility 0s 1000ms; }
   .front-board { height: calc(var(--book-width) * 1.415); }
   .is-enhanced .book { transform: rotateX(var(--rotation-x,5deg)) rotateY(var(--rotation-y,-22deg)) rotateZ(-2deg); }
   .cover-inside { visibility: hidden; }
   .download-page { padding: 16px 24px; }
   .download-page { min-height: max(482px,calc(var(--book-width) * 1.415 - 8px)); }
+  .is-enhanced .book.is-open .download-page { min-height: max(490px,calc(var(--book-width) * 1.415)); padding: 17px 25px 17px 24px; }
   .download-page h2 { font-size: 28px; }
   .page-intro { margin-bottom: 12px; font-size: 12px; }
   .format-name { font-size: 14px; gap: 4px; }

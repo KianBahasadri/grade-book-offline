@@ -42,6 +42,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_site.py -v
           node --check site/site.js
+          node --check site/book-renderer.js
       - name: Configure Pages
         if: github.event_name != 'pull_request'
         id: pages
