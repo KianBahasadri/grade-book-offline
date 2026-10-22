@@ -8,6 +8,10 @@ when the source content changes.
 
 **[Visit the download website](https://kianbahasadri.github.io/grade-book-offline/)**
 
+[![The book open to its downloads: PDF, EPUB, an offline website, Word, and plain text](docs/demo-poster.jpg)](docs/demo.mp4)
+
+A 23-second tour: drag the book, choose a format, find an earlier edition, and switch themes. Select the image to play it.
+
 Choose a format, get help opening it, or select an earlier edition. No GitHub
 account is needed. Downloads are also available in
 [GitHub Releases](https://github.com/KianBahasadri/grade-book-offline/releases/latest).
