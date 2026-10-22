@@ -115,10 +115,11 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file,
     links = []
     for kind, title, description, action in FORMATS:
         asset = selected["assets"][kind]
+        extension = escape(Path(ASSETS[kind]).suffix)
         links.append(
-            f'<a class="download-link" data-format="{kind}" aria-label="{action}" '
+            f'<a class="download-link" data-format="{kind}" aria-label="{action} ({extension})" '
             f'href="{escape(asset["url"], quote=True)}"><span><span class="format-name">'
-            f'{title}<span class="file-size">{size_label(asset["size"])}</span></span>'
+            f'{title}<span class="file-size"><code>{extension}</code>{size_label(asset["size"])}</span></span>'
             f'<span class="format-hint">{escape(description)}</span></span>{DOWNLOAD_ICON}</a>')
     archive = []
     for edition in editions:

@@ -11,9 +11,12 @@
   const coverTexture = document.createElement("canvas");
   const coverContext = coverImage.classList.contains("cover-flat")
     ? coverTexture.getContext("2d", { alpha: false }) : null;
+  const inside = book.querySelector(".cover-inside");
   const caption = document.querySelector(".open-label");
   const closeBook = document.querySelector(".close-book");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const narrowBook = matchMedia("(max-width: 860px)");
+  const LEAF_MS = 1100;
   const support = document.querySelector(".support");
   const supportDropdowns = [...support.querySelectorAll(".support-dropdown")];
   const editions = document.querySelector("#editions");
@@ -59,6 +62,7 @@
     rotation.x = Math.max(-75, Math.min(75, rotation.x));
     book.style.setProperty("--rotation-x", rotation.x + "deg");
     book.style.setProperty("--rotation-y", rotation.y + "deg");
+    fitZoom();
     renderer?.invalidate(book.classList.contains("is-rotating") ? 0 : 1050);
   }
   function stopSpin() {
@@ -71,35 +75,121 @@
     rotation = { ...defaultView };
     drawRotation();
   }
+  const zoomMin = .55;
+  const zoomMax = 2.4;
   function setZoom(value) {
-    requestedZoom = Math.max(.55, Math.min(1.8, value));
+    requestedZoom = Math.max(zoomMin, Math.min(zoomMax, value));
     fitZoom();
   }
+  // Corners of the tilted book, in stage pixels. Perspective makes the
+  // near edge larger than the layout box, which is what clips the cover.
+  function projectedBounds(scale) {
+    const width = book.offsetWidth;
+    const height = book.offsetHeight;
+    const tilt = narrowBook.matches ? -2 : -3;
+    const matrix = new DOMMatrix().rotateAxisAngle(1, 0, 0, rotation.x)
+      .multiply(new DOMMatrix().rotateAxisAngle(0, 1, 0, rotation.y))
+      .multiply(new DOMMatrix().rotateAxisAngle(0, 0, 1, tilt));
+    const stageStyle = getComputedStyle(stage);
+    const perspective = parseFloat(stageStyle.perspective) || 1800;
+    const shift = (parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom)) / 2;
+    const centerX = stage.clientWidth / 2;
+    const centerY = stage.clientHeight / 2;
+    const bounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+    for (const x of [-width / 2 - 2, width / 2]) {
+      for (const y of [-height / 2, height / 2]) {
+        for (const z of [-22, 2]) {
+          const point = matrix.transformPoint(new DOMPoint(x * scale, y * scale, z * scale));
+          const w = 1 - point.z / perspective;
+          const sx = centerX + point.x / w;
+          const sy = centerY + (point.y + shift) / w;
+          bounds.left = Math.min(bounds.left, sx);
+          bounds.top = Math.min(bounds.top, sy);
+          bounds.right = Math.max(bounds.right, sx);
+          bounds.bottom = Math.max(bounds.bottom, sy);
+        }
+      }
+    }
+    return bounds;
+  }
+  function closedFit(requested) {
+    const margin = 12;
+    const maxX = stage.clientWidth - margin;
+    const maxY = stage.clientHeight - margin;
+    const fits = scale => {
+      const box = projectedBounds(scale);
+      return box.left >= margin && box.top >= margin && box.right <= maxX && box.bottom <= maxY;
+    };
+    if (fits(requested)) return requested;
+    let low = .05;
+    let high = requested;
+    for (let step = 0; step < 14; step++) {
+      const mid = (low + high) / 2;
+      if (fits(mid)) low = mid;
+      else high = mid;
+    }
+    return low;
+  }
   function fitZoom() {
-    const spread = book.classList.contains("is-open") && innerWidth > 860 ? 2 : 1;
-    const maximum = Math.max(.55, stage.clientWidth * .94 / (book.offsetWidth * spread));
-    zoom = Math.min(maximum, requestedZoom);
+    if (!book.classList.contains("is-open")) {
+      zoom = closedFit(requestedZoom);
+    } else {
+      const spread = innerWidth > 860 ? 2 : 1;
+      const widthFit = stage.clientWidth * .94 / (book.offsetWidth * spread);
+      const pad = parseFloat(getComputedStyle(stage).paddingTop) + parseFloat(getComputedStyle(stage).paddingBottom);
+      const available = stage.clientHeight - pad;
+      const heightFit = available > 40 && book.offsetHeight ? available / book.offsetHeight : widthFit;
+      const maximum = Math.max(zoomMin, Math.min(widthFit, heightFit));
+      zoom = Math.min(maximum, requestedZoom);
+    }
     stage.style.setProperty("--book-scale", zoom);
-    // Reserve scrolling room for the model; its sticky caption stays above it.
     stage.style.setProperty("--book-height", book.offsetHeight + "px");
     drawCover();
     renderer?.invalidate();
+  }
+  function leafAnimations() {
+    return [cover, inside].flatMap(element => element.getAnimations().filter(animation =>
+      String(animation.animationName || "").startsWith("mobile-leaf")));
+  }
+  // Opening and closing use different leaf animations. Closing starts at the
+  // open pose, so a close that interrupts the turn seeks to the matching point.
+  function steerLeaf(opening, resumeAt) {
+    const bookTurn = book.getAnimations().filter(animation => animation.animationName === "mobile-book-close");
+    const animations = leafAnimations();
+    for (const animation of animations.concat(bookTurn)) {
+      animation.pause();
+      animation.playbackRate = 1;
+      if (!opening) animation.currentTime = resumeAt;
+      if (animation.playState !== "running") animation.play();
+    }
+    return animations[0];
   }
   function setOpen(open, focus = true) {
     clearTimeout(focusTimer);
     clearTimeout(settleTimer);
     renderer?.suspend();
     const wasFlat = book.classList.contains("is-open-flat");
-    if (wasFlat) book.classList.add("is-restoring");
-    book.classList.remove("is-open-flat");
-    // Restore the identical 3D pose before starting the closing transition.
-    if (wasFlat) {
+    const motion = Boolean(focus) && !reducedMotion.matches;
+    const narrow = narrowBook.matches && motion;
+    const shutNarrow = narrow && !open && book.classList.contains("is-open");
+    let resumeClose = 0;
+    if (shutNarrow && !wasFlat) {
+      const running = leafAnimations();
+      const time = running.length ? Number(running[0].currentTime) || 0 : 0;
+      resumeClose = Math.max(0, LEAF_MS - time);
+    }
+    // Restore the flat spread to the 3D pose before a close can move.
+    // Opening an already open narrow book leaves the settled page alone.
+    if (wasFlat && (shutNarrow || !narrow)) {
+      book.classList.add("is-restoring");
+      book.classList.remove("is-open-flat");
       void book.offsetWidth;
       book.classList.remove("is-restoring");
     }
     stopSpin();
     gesture = null;
-    book.classList.toggle("is-open", open);
+    if (!shutNarrow) book.classList.toggle("is-open", open);
+    book.classList.toggle("is-closing", shutNarrow);
     downloads.inert = !open;
     downloads.setAttribute("aria-hidden", String(!open));
     cover.inert = open;
@@ -108,12 +198,27 @@
     caption.classList.toggle("is-open", open);
     resetRotation();
     fitZoom();
+    // Fit the spread after the class change, then aim the leaf. Seeking
+    // earlier is undone when the layout pass restarts the animation.
+    const leaf = narrow && (shutNarrow || open) ? steerLeaf(open, resumeClose) : null;
+    let settled = false;
     const settle = () => {
+      if (settled) return;
+      settled = true;
       if (open) book.classList.add("is-open-flat");
-      else renderer?.resume();
+      else {
+        book.classList.remove("is-open", "is-closing");
+        fitZoom();
+        renderer?.resume();
+      }
     };
-    if (!focus || reducedMotion.matches) settle();
-    else settleTimer = setTimeout(settle, 1120);
+    if (!motion) settle();
+    else if (leaf) {
+      leaf.onfinish = settle;
+      const time = Number(leaf.currentTime) || 0;
+      const rate = leaf.playbackRate || 1;
+      settleTimer = setTimeout(settle, (rate < 0 ? time : LEAF_MS - time) / Math.abs(rate) + 50);
+    } else settleTimer = setTimeout(settle, 1120);
     if (focus) {
       if (!open) opener.focus({ preventScroll: true });
       else focusTimer = setTimeout(() => {
@@ -123,12 +228,35 @@
   }
   opener.addEventListener("click", () => setOpen(true));
   closeBook.addEventListener("click", () => setOpen(false));
+  inside.addEventListener("click", () => {
+    if (book.classList.contains("is-open") && !book.classList.contains("is-closing")) setOpen(false);
+  });
   caption.addEventListener("click", () => setOpen(!book.classList.contains("is-open")));
   root.classList.add("is-enhanced");
   for (const element of [caption, closeBook, document.querySelector(".page-utilities"),
                         document.querySelector(".edition-filter-controls")]) element.hidden = false;
   setOpen(location.hash === "#downloads", false);
 
+  function inScrollable(node) {
+    for (let element = node instanceof Element ? node : node?.parentElement; element && element !== document.body; element = element.parentElement) {
+      const overflow = getComputedStyle(element).overflowY;
+      if ((overflow === "auto" || overflow === "scroll") && element.scrollHeight > element.clientHeight + 1) return true;
+    }
+    return false;
+  }
+  addEventListener("wheel", event => {
+    if (event.ctrlKey || event.metaKey || inScrollable(event.target)) return;
+    event.preventDefault();
+  }, { passive: false });
+  addEventListener("touchstart", event => {
+    if (event.touches.length < 2) return;
+    finishDrag(null, true);
+    stopSpin();
+  }, { passive: true });
+  addEventListener("touchmove", event => {
+    if (event.touches.length > 1 || inScrollable(event.target)) return;
+    event.preventDefault();
+  }, { passive: false });
   stage.addEventListener("wheel", event => {
     if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
     event.preventDefault();
@@ -146,22 +274,31 @@
   new ResizeObserver(fitZoom).observe(stage);
 
   // Keep native click/keyboard activation. Capture only once a real drag starts.
+  // A finger uses the same gesture. Touch needs a little more travel so a tap still opens.
+  // Touch already captures to its target; retargeting that capture cancels the drag.
   stage.addEventListener("pointerdown", event => {
-    if (event.button !== 0 || !event.isPrimary || event.pointerType === "touch"
-        || book.classList.contains("is-open")) return;
+    if (book.classList.contains("is-open")) return;
+    if (event.pointerType === "touch" && !event.isPrimary) {
+      finishDrag(null, true);
+      stopSpin();
+      return;
+    }
+    if (event.button !== 0 || !event.isPrimary) return;
     stopSpin();
     gesture = { id: event.pointerId, startX: event.clientX, startY: event.clientY,
       lastX: event.clientX, lastY: event.clientY, time: event.timeStamp,
-      initial: { ...rotation }, dragging: false, vx: 0, vy: 0 };
+      initial: { ...rotation }, dragging: false, vx: 0, vy: 0,
+      touch: event.pointerType === "touch",
+      slop: event.pointerType === "touch" ? 10 : 6 };
   });
   window.addEventListener("pointermove", event => {
     if (!gesture || gesture.id !== event.pointerId) return;
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
-    if (!gesture.dragging && Math.hypot(dx, dy) < 6) return;
+    if (!gesture.dragging && Math.hypot(dx, dy) < gesture.slop) return;
     if (!gesture.dragging) {
       gesture.dragging = true;
-      stage.setPointerCapture(event.pointerId);
+      if (!gesture.touch) stage.setPointerCapture(event.pointerId);
       book.classList.add("is-rotating", "is-dragging");
     }
     event.preventDefault();
@@ -205,7 +342,9 @@
   }
   window.addEventListener("pointerup", event => finishDrag(event));
   window.addEventListener("pointercancel", event => finishDrag(event, true));
-  stage.addEventListener("lostpointercapture", event => finishDrag(event, true));
+  stage.addEventListener("lostpointercapture", event => {
+    if (event.target === stage) finishDrag(event, true);
+  });
   window.addEventListener("blur", () => { finishDrag(null, true); stopSpin(); });
   stage.addEventListener("dragstart", event => event.preventDefault());
   stage.addEventListener("click", event => {
@@ -231,7 +370,6 @@
   });
   function showDownloads() {
     setOpen(true);
-    downloads.scrollIntoView({ behavior: reducedMotion.matches ? "instant" : "smooth", block: "center" });
   }
   document.querySelectorAll('a[href="#downloads"]').forEach(link =>
     link.addEventListener("click", event => {
