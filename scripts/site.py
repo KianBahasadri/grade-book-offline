@@ -109,6 +109,69 @@ def readable_notes(notes):
     return re.sub(r"^#{1,6}\s+", "", notes, flags=re.MULTILINE)
 
 
+# Repeated on every historical release. The edition row already shows the date,
+# and the release id is shown beside these notes.
+_REPEATED_NOTE = (
+    re.compile(r"Unofficial offline edition of The GRADE Book\.?"),
+    re.compile(r"Captured .+; includes \d+ published English chapters\.?"),
+    re.compile(r"Download grade-book\.epub .+"),
+    re.compile(r"grade-book-html\.zip .+"),
+    re.compile(r"grade-book\.docx .+"),
+    re.compile(r"(?:The official cover and figures|Figures) are embedded in EPUB.+"),
+    re.compile(r"Entries linking to the older handbook.+"),
+    re.compile(r"External websites and videos remain online links\.?"),
+    re.compile(r"Book content remains .+"),
+    re.compile(r"Original authorship and notices are retained.+"),
+    re.compile(r"Content SHA-256: .+"),
+    re.compile(r"See manifest\.json for provenance.+"),
+)
+_NOTE_REWRITES = {
+    "The official book cover was added or updated in every illustrated format.": "Cover updated.",
+    "The official book cover was added or updated.": "Cover updated.",
+    "Manual rebuild of unchanged source content.": "Rebuild of unchanged content.",
+    "The book's catalog, ordering, attribution, or About page changed.": "Catalog, ordering, attribution, or About page changed.",
+}
+
+
+def brief_notes(notes):
+    """Keep only what distinguishes this edition from the others."""
+    text = readable_notes(notes).strip()
+    kept = []
+    label = None
+    items = []
+
+    def flush():
+        nonlocal label, items
+        if label:
+            kept.append(f"{label} " + "; ".join(items) if items else label.rstrip(":"))
+        label = None
+        items = []
+
+    for line in text.splitlines():
+        line = _NOTE_REWRITES.get(line.strip(), line.strip())
+        if not line or any(pattern.fullmatch(line) for pattern in _REPEATED_NOTE):
+            continue
+        if re.fullmatch(r"(?:Added|Updated|Removed):", line):
+            flush()
+            label = line
+        elif line.startswith("- ") and label:
+            items.append(line[2:].strip())
+        else:
+            flush()
+            kept.append(line)
+    flush()
+    if kept == ["First published edition."]:
+        chapters = re.search(r"includes (\d+) published English chapters", text)
+        if chapters:
+            kept = [f"First published edition. {chapters.group(1)} English chapters."]
+    if kept:
+        return "\n".join(kept)
+    chapters = re.search(r"includes (\d+) published English chapters", text)
+    if chapters:
+        return f"{chapters.group(1)} English chapters."
+    return "No release notes were provided."
+
+
 def render_page(editions, selected, prefix, canonical, repo, cover_file,
                 cover_size=(866, 1174), cover_flat=False):
     escape = html.escape
@@ -131,6 +194,7 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file,
         date_aliases = " ".join(captured.strftime(pattern) for pattern in
                                 ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%b %d %Y"))
         notes = readable_notes(edition["notes"])
+        summary = brief_notes(edition["notes"])
         search = " ".join([edition["label"], date_aliases, edition["title"], edition["tag"],
                            notes, edition["notes"], "latest" if edition["latest"] else "earlier",
                            "viewing current" if current else ""])
@@ -143,7 +207,7 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file,
             f'<details class="release-details"><summary>Release details '
             '<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg>'
             f'</summary><pre class="release-block"><span class="release-id">{escape(edition["tag"])}</span>'
-            f'{escape(notes).strip()}</pre></details></li>')
+            f'{escape(summary)}</pre></details></li>')
     notice = "" if selected["latest"] else (
         '<p class="edition-notice">You’re viewing an earlier edition.'
         f' <a href="{prefix}index.html#downloads">Get the latest edition</a>.</p>')

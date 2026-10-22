@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
-from scripts.site import ASSETS, BASE_URL, REPO, ROOT, build_site, editions_from_releases, load_releases, published_cover
+from scripts.site import ASSETS, BASE_URL, REPO, ROOT, brief_notes, build_site, editions_from_releases, load_releases, published_cover
 
 
 def release(tag="edition-2026-10-20-aaaa-1.1", published="2026-10-20T18:00:00Z"):
@@ -140,6 +140,32 @@ class WebsiteTests(unittest.TestCase):
                         published_cover(edition)
                 else:
                     self.assertEqual(published_cover(edition), ("official-cover.png", image))
+
+    def test_edition_details_keep_only_what_changed(self):
+        long_form = """Unofficial offline edition of The GRADE Book.
+Captured 2026-10-20T19:30:07+00:00; includes 16 published English chapters.
+
+Download grade-book.epub for an e-reader, grade-book.pdf for printing,
+grade-book-html.zip for a browser (extract it and open index.html),
+grade-book.docx for Word, or grade-book.txt for text only.
+The official cover and figures are embedded in EPUB, PDF, DOCX and the HTML archive.
+
+**Updated:**
+
+- Certainty
+- Risk of bias
+
+The official book cover was added or updated in every illustrated format.
+
+Book content remains CC BY-NC-ND 4.0.
+Content SHA-256: `abc`.
+See manifest.json for provenance and SHA256SUMS for download checksums.
+"""
+        self.assertEqual(brief_notes(long_form), "Updated: Certainty; Risk of bias\nCover updated.")
+        first = long_form.replace("**Updated:**\n\n- Certainty\n- Risk of bias\n\nThe official book cover was added or updated in every illustrated format.\n\n",
+                                   "First published edition.\n\n")
+        self.assertEqual(brief_notes(first), "First published edition. 16 English chapters.")
+        self.assertEqual(brief_notes("No template here.\nA custom correction."), "No template here.\nA custom correction.")
 
     def test_release_search_preserves_metadata_without_injecting_markup(self):
         current = release()

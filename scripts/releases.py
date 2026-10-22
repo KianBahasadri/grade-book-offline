@@ -57,47 +57,27 @@ def baseline(repo, destination):
 
 
 def release_notes(current, previous):
-    before = {item["id"]: item for item in (previous or {}).get("chapters", [])}
     after = {item["id"]: item for item in current["chapters"]}
-    added = [item["title"] for key, item in after.items() if key not in before]
-    updated = [item["title"] for key, item in after.items()
-               if key in before and item["content_sha256"] != before[key]["content_sha256"]]
-    removed = [item["title"] for key, item in before.items() if key not in after]
-    lines = [
-        f"Unofficial offline edition of [The GRADE Book]({current['source']}/).",
-        f"Captured **{current['captured_at']}**; includes **{len(after)} published English chapters**.",
-        "",
-        "Download **grade-book.epub** for an e-reader, **grade-book.pdf** for printing,",
-        "**grade-book-html.zip** for a browser (extract it and open `index.html`),",
-        "**grade-book.docx** for Word, or **grade-book.txt** for text only.",
-        "The official cover and figures are embedded in EPUB, PDF, DOCX and the HTML archive.",
-        "",
-    ]
     if previous is None:
-        lines.append("First published edition.")
+        lines = [f"First published edition. **{len(after)}** English chapters."]
     elif previous["content_sha256"] == current["content_sha256"]:
-        lines.append("Manual rebuild of unchanged source content.")
+        lines = ["Manual rebuild of unchanged source content."]
     else:
+        before = {item["id"]: item for item in previous.get("chapters", [])}
+        added = [item["title"] for key, item in after.items() if key not in before]
+        updated = [item["title"] for key, item in after.items()
+                   if key in before and item["content_sha256"] != before[key]["content_sha256"]]
+        removed = [item["title"] for key, item in before.items() if key not in after]
+        lines = []
         cover_changed = (current.get("cover", {}).get("content_sha256")
                          != previous.get("cover", {}).get("content_sha256"))
         if cover_changed:
-            lines.append("The official book cover was added or updated in every illustrated format.")
+            lines.append("Cover updated.")
         for label, titles in [("Added", added), ("Updated", updated), ("Removed", removed)]:
             if titles:
-                lines.extend([f"**{label}:**", "", *[f"- {title}" for title in titles], ""])
-        if not (added or updated or removed or cover_changed):
-            lines.append("The book's catalog, ordering, attribution, or About page changed.")
-    lines.extend([
-        "",
-        "Entries linking to the older handbook and unfinished chapters are listed separately.",
-        "External websites and videos remain online links.",
-        "",
-        "Book content remains **[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)**.",
-        "Original authorship and notices are retained; this project is not endorsed by the authors.",
-        "",
-        f"Content SHA-256: `{current['content_sha256']}`.",
-        "See `manifest.json` for provenance and `SHA256SUMS` for download checksums.",
-    ])
+                lines.append(f"**{label}:** " + "; ".join(titles))
+        if not lines:
+            lines.append("Catalog, ordering, attribution, or About page changed.")
     return "\n".join(lines) + "\n"
 
 

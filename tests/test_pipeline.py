@@ -197,7 +197,7 @@ class ReleaseTests(unittest.TestCase):
         previous["chapters"][0]["content_sha256"] = "y"
         self.assertIn("**Updated:**", release_notes(current, previous))
         current["cover"] = {"content_sha256": "c" * 64}
-        self.assertIn("official book cover was added", release_notes(current, previous))
+        self.assertIn("Cover updated.", release_notes(current, previous))
 
 
 if __name__ == "__main__":
