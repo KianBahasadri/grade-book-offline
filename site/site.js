@@ -76,14 +76,90 @@
     drawRotation();
   }
   const zoomMin = .55;
-  const zoomMax = 2.4;
+  // At the highest zoom the cover extends this far past the screen edges.
+  const screenPast = 40;
+  let zoomedByUser = false;
+  let restingZoom = 1;
+  function coverSpan(scale) {
+    const corners = frontCorners(scale);
+    const top = Math.min(...corners.map(corner => corner.y));
+    const bottom = Math.max(...corners.map(corner => corner.y));
+    return { top, bottom, height: bottom - top, center: (top + bottom) / 2 };
+  }
+  // Closed-book ceiling: the highest and lowest points of the cover are just
+  // off the screen. The tilt and the header make one side travel further.
+  function closedCeiling() {
+    const clears = scale => {
+      const span = coverSpan(scale);
+      return span.top <= -screenPast && span.bottom >= innerHeight + screenPast;
+    };
+    let low = zoomMin;
+    let high = 8;
+    if (!clears(high)) return high;
+    for (let step = 0; step < 16; step++) {
+      const mid = (low + high) / 2;
+      if (clears(mid)) high = mid;
+      else low = mid;
+    }
+    return high;
+  }
+  // Open pages are flat, so their on-screen height is the layout height times
+  // the zoom. The ceiling is the screen plus the same small strip.
+  function openCeiling() {
+    const height = book.offsetHeight;
+    if (!height) return 8;
+    return (innerHeight + screenPast * 2) / height;
+  }
+  // An open page is pinned to the top of the stage once it is taller than the
+  // stage, so the extra height would all hang out the bottom. Shift it up until
+  // the overflow is split across the top and the bottom of the screen.
+  function liftMargin() {
+    if (!zoomedByUser || !book.classList.contains("is-open")) return 0;
+    const scale = zoom || 1;
+    const visualHeight = book.offsetHeight * scale;
+    if (visualHeight <= innerHeight) return 0;
+    const padTop = parseFloat(getComputedStyle(stage).paddingTop) || 0;
+    const center = stage.getBoundingClientRect().top + padTop + visualHeight / 2;
+    return (innerHeight / 2 - center) / scale;
+  }
+  function zoomCeiling() {
+    return book.classList.contains("is-open") ? openCeiling() : closedCeiling();
+  }
   function setZoom(value) {
-    requestedZoom = Math.max(zoomMin, Math.min(zoomMax, value));
+    zoomedByUser = true;
+    requestedZoom = Math.max(zoomMin, Math.min(zoomCeiling(), value));
     fitZoom();
   }
   // Corners of the tilted book, in stage pixels. Perspective makes the
   // near edge larger than the layout box, which is what clips the cover.
-  function projectedBounds(scale) {
+  function frontCorners(scale) {
+    const width = book.offsetWidth;
+    const height = book.offsetHeight;
+    const tilt = narrowBook.matches ? -2 : -3;
+    const matrix = new DOMMatrix().rotateAxisAngle(1, 0, 0, rotation.x)
+      .multiply(new DOMMatrix().rotateAxisAngle(0, 1, 0, rotation.y))
+      .multiply(new DOMMatrix().rotateAxisAngle(0, 0, 1, tilt));
+    const perspective = parseFloat(getComputedStyle(stage).perspective) || 1800;
+    const stageStyle = getComputedStyle(stage);
+    const shift = (parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom)) / 2;
+    const centerX = stage.clientWidth / 2;
+    const centerY = stage.clientHeight / 2;
+    const origin = stage.getBoundingClientRect().top;
+    const corners = [];
+    for (const x of [-width / 2 - 2, width / 2]) {
+      for (const y of [-height / 2, height / 2]) {
+        const point = matrix.transformPoint(new DOMPoint(x * scale, y * scale, 0));
+        const w = 1 - point.z / perspective;
+        corners.push({
+          x: centerX + point.x / w,
+          y: origin + centerY + (point.y + shift) / w,
+          edge: y < 0 ? "top" : "bottom"
+        });
+      }
+    }
+    return corners;
+  }
+  function projectedBounds(scale, depths = [-22, 2]) {
     const width = book.offsetWidth;
     const height = book.offsetHeight;
     const tilt = narrowBook.matches ? -2 : -3;
@@ -98,7 +174,7 @@
     const bounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
     for (const x of [-width / 2 - 2, width / 2]) {
       for (const y of [-height / 2, height / 2]) {
-        for (const z of [-22, 2]) {
+        for (const z of depths) {
           const point = matrix.transformPoint(new DOMPoint(x * scale, y * scale, z * scale));
           const w = 1 - point.z / perspective;
           const sx = centerX + point.x / w;
@@ -131,19 +207,27 @@
     return low;
   }
   function fitZoom() {
+    const ceiling = zoomCeiling();
     if (!book.classList.contains("is-open")) {
-      zoom = closedFit(requestedZoom);
+      // Resting zoom keeps the whole cover on screen. A deliberate zoom may
+      // continue until the top and bottom are just past the screen.
+      zoom = zoomedByUser ? Math.min(requestedZoom, ceiling) : closedFit(Math.min(requestedZoom, ceiling));
     } else {
       const spread = innerWidth > 860 ? 2 : 1;
       const widthFit = stage.clientWidth * .94 / (book.offsetWidth * spread);
       const pad = parseFloat(getComputedStyle(stage).paddingTop) + parseFloat(getComputedStyle(stage).paddingBottom);
       const available = stage.clientHeight - pad;
       const heightFit = available > 40 && book.offsetHeight ? available / book.offsetHeight : widthFit;
-      const maximum = Math.max(zoomMin, Math.min(widthFit, heightFit));
-      zoom = Math.min(maximum, requestedZoom);
+      const fitted = Math.max(zoomMin, Math.min(widthFit, heightFit));
+      zoom = zoomedByUser ? Math.min(requestedZoom, ceiling) : Math.min(fitted, requestedZoom);
     }
     stage.style.setProperty("--book-scale", zoom);
     stage.style.setProperty("--book-height", book.offsetHeight + "px");
+    stage.style.setProperty("--book-lift", liftMargin() + "px");
+    if (!zoomedByUser) restingZoom = zoom;
+    // Past the resting size the cover has to leave the page and reach the
+    // screen edges. The page otherwise clips it under the header.
+    root.classList.toggle("is-book-zoomed", zoomedByUser && zoom > restingZoom + 0.02);
     drawCover();
     renderer?.invalidate();
   }
@@ -268,7 +352,11 @@
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (!["+", "=", "-", "0"].includes(event.key)) return;
     event.preventDefault();
-    setZoom(event.key === "0" ? 1 : zoom * (event.key === "-" ? 1 / 1.15 : 1.15));
+    if (event.key === "0") {
+      zoomedByUser = false;
+      requestedZoom = 1;
+      fitZoom();
+    } else setZoom(zoom * (event.key === "-" ? 1 / 1.15 : 1.15));
   });
   addEventListener("resize", fitZoom);
   new ResizeObserver(fitZoom).observe(stage);
