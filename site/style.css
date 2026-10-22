@@ -67,10 +67,10 @@ html.is-enhanced .book-stage { flex: 1 1 auto; min-height: 0; }
 .format-list { display: flex; flex-direction: column; }
 .download-link { display: grid; grid-template-columns: minmax(0,1fr) auto; column-gap: 12px; padding: 8px 0; text-decoration: none; border-bottom: 1px solid var(--line); align-items: center; }
 .download-link:hover, .download-link:focus-visible { background: rgba(255,255,255,.65); }
-.format-name { display: flex; gap: 8px; align-items: center; font-size: 15px; font-weight: 500; }
+.format-name { display: flex; gap: 8px; align-items: baseline; font-size: 15px; font-weight: 500; }
 .format-hint { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
-.file-size { display: inline-flex; gap: 6px; align-items: center; font: 400 12px/1 var(--ui); color: var(--muted); white-space: nowrap; }
-.file-size code { font: 500 8px/1 var(--ui); letter-spacing: .02em; color: inherit; padding: 1px 3px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface-raised); }
+.file-size { display: inline-flex; gap: 6px; align-items: baseline; font: 400 12px/1 var(--ui); color: var(--muted); white-space: nowrap; }
+.file-size code { font: 500 8px/1 var(--ui); letter-spacing: .02em; color: inherit; }
 .download-link svg { width: 16px; height: 16px; color: var(--muted); }
 .page-colophon { margin-top: auto; padding-top: 12px; color: var(--muted); font-size: 10px; }
 .page-colophon p { margin: 0 0 4px; }
@@ -276,7 +276,7 @@ details[open] > summary svg { transform: rotate(180deg); }
   .format-name { font-size: 14px; gap: 4px; }
   .format-hint { font-size: 10px; }
   .file-size { font-size: 11px; }
-  .file-size code { font-size: 7px; padding: 1px 2px; }
+  .file-size code { font-size: 7px; }
   .download-link { padding: 8px 0; column-gap: 8px; }
   .page-colophon { font-size: 9px; }
 }
