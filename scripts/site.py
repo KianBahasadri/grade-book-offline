@@ -182,7 +182,7 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file,
         links.append(
             f'<a class="download-link" data-format="{kind}" aria-label="{action} ({extension})" '
             f'href="{escape(asset["url"], quote=True)}"><span><span class="format-name">'
-            f'{title}<span class="file-size">{size_label(asset["size"])}<code>{extension}</code></span></span>'
+            f'{title}<span class="file-size"><span class="size-value">{size_label(asset["size"])}</span><code>{extension}</code></span></span>'
             f'<span class="format-hint">{escape(description)}</span></span>{DOWNLOAD_ICON}</a>')
     archive = []
     for edition in editions:
