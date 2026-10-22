@@ -202,8 +202,8 @@ details[open] > summary svg { transform: rotate(180deg); }
 .edition-badges { display: flex; flex-wrap: wrap; gap: 8px; }
 .edition-badge { display: inline-flex; font-size: 13px; line-height: 1.2; color: var(--muted); }
 .release-details summary { align-items: flex-start; min-height: 0; padding: 2px 0 4px; font-size: 14px; }
-.release-id { overflow-wrap: anywhere; font: 13px/1.5 var(--mono); color: var(--muted); margin: 8px 0; }
-.release-notes { font-size: 16px; line-height: 1.6; color: var(--muted); white-space: pre-line; overflow-wrap: anywhere; margin: 12px 0; }
+.release-block { margin: 2px 0 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: 13px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.release-block .release-id { display: block; margin: 0 0 8px; color: var(--muted); font: inherit; }
 .no-editions { color: var(--muted); font-size: 16px; padding: 24px 0; }
 @media (max-width: 600px) {
   .edition-tools { flex-wrap: wrap; }

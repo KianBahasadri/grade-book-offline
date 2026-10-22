@@ -142,8 +142,8 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file,
             f'{escape(edition["label"])}</a><div class="edition-badges">{badges}</div></div>'
             f'<details class="release-details"><summary>Release details '
             '<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg>'
-            f'</summary><p class="release-id">{escape(edition["tag"])}</p>'
-            f'<div class="release-notes">{escape(notes)}</div></details></li>')
+            f'</summary><pre class="release-block"><span class="release-id">{escape(edition["tag"])}</span>'
+            f'{escape(notes).strip()}</pre></details></li>')
     notice = "" if selected["latest"] else (
         '<p class="edition-notice">You’re viewing an earlier edition.'
         f' <a href="{prefix}index.html#downloads">Get the latest edition</a>.</p>')
