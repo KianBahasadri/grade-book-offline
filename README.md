@@ -152,11 +152,14 @@ and regenerate with `uv pip compile requirements.in --generate-hashes -o require
 
 ## License and attribution
 
-The book is **[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)**,
-as stated on its [About page](https://book.gradepro.org/about). These are
-noncommercial format conversions with original notices and attribution retained.
+The GRADE Book’s text, figures, tables, and cover are
+**[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)**,
+as stated on its [About page](https://book.gradepro.org/about): unchanged copies,
+with attribution, for noncommercial use. Cited works keep their own terms.
+These are noncommercial format conversions with original notices and attribution retained.
 They are not endorsed by the GRADE Working Group or Evidence Prime.
 See [CONTENT-LICENSE.md](CONTENT-LICENSE.md) for the source's requested citation.
 
 The original automation code and styles use the [MIT license](LICENSE).
-That license does not apply to the book content.
+That license does not apply to the book. IBM Plex Sans is OFL
+(`site/FONT-LICENSE.txt`). The icons are Lucide (`site/LUCIDE-LICENSE.txt`).

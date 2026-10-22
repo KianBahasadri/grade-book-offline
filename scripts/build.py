@@ -92,9 +92,11 @@ alt="{html.escape(cover["alt"], quote=True)}" style="width: 5.9in"></p></section
 <div class="edition-note"><p>Unofficial offline edition. Source captured {timestamp}.
 This edition is not endorsed by the GRADE Working Group or Evidence Prime.</p>
 <p>Source: <a href="{SOURCE}/">{SOURCE}/</a>.
-Book content: <a href="{LICENSE_URL}">CC BY-NC-ND 4.0</a>.
-Original authorship, citations, and notices are retained. Changes are limited to
-formatting, navigation, and packaging for offline reading.</p>
+The book’s text, figures, tables, and cover are
+<a href="{LICENSE_URL}">CC BY-NC-ND 4.0</a>: unchanged copies, with attribution,
+for noncommercial use. Cited works keep their own terms.
+Original authorship and notices are retained. This file only changes formatting,
+navigation, and packaging.</p>
 <p>Includes {len(manifest["chapters"])} published English chapters, their figures,
 tables, references, and the book's About page. External websites and videos
 remain links requiring internet access. Entries pointing to the older handbook
@@ -286,7 +288,7 @@ def build(snapshot, output, browser_path=None):
         "pandoc", str(input_file), "--from=html-native_divs", f"--resource-path={book.resolve()}",
         "--metadata=title=The GRADE Book", "--metadata=lang=en",
         "--metadata=author=Neumann I; Schünemann H (editors); GRADE Working Group",
-        f"--metadata=rights=CC BY-NC-ND 4.0 — {LICENSE_URL}",
+        f"--metadata=rights=CC BY-NC-ND 4.0 for the book text, figures, tables, and cover — {LICENSE_URL}",
     ]
     run(*common, "--to=epub3", "--toc", "--toc-depth=2",
         "--epub-chapter-level=1", "--epub-title-page=false",

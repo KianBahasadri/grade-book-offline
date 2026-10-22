@@ -1,13 +1,16 @@
 # Book content and attribution
 
-The GRADE Book and its official cover, figures, tables, references, and other content belong to
-their original authors and rights holders. They are **not** covered by this
-repository's software license.
+The GRADE Book belongs to its authors and rights holders. It is **not** covered by
+this repository's software license.
 
 The [book's About page](https://book.gradepro.org/about) states that the book is
 published under **Creative Commons Attribution–NonCommercial–NoDerivatives 4.0
 International (CC BY-NC-ND 4.0)**:
 <https://creativecommons.org/licenses/by-nc-nd/4.0/>.
+That grant covers the published book: its text, figures, tables, and official cover.
+It allows unchanged copies, with attribution, for noncommercial use.
+It does not license works that the book merely cites, and it does not license
+this repository's code, the IBM Plex Sans font, or the Lucide icons.
 
 The source requests this citation:
 
