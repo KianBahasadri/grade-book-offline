@@ -211,7 +211,8 @@
     if (!book.classList.contains("is-open")) {
       // Resting zoom keeps the whole cover on screen. A deliberate zoom may
       // continue until the top and bottom are just past the screen.
-      zoom = zoomedByUser ? Math.min(requestedZoom, ceiling) : closedFit(Math.min(requestedZoom, ceiling));
+      restingZoom = closedFit(Math.min(1, ceiling));
+      zoom = zoomedByUser ? Math.min(requestedZoom, ceiling) : restingZoom;
     } else {
       const spread = innerWidth > 860 ? 2 : 1;
       const widthFit = stage.clientWidth * .94 / (book.offsetWidth * spread);
@@ -219,12 +220,12 @@
       const available = stage.clientHeight - pad;
       const heightFit = available > 40 && book.offsetHeight ? available / book.offsetHeight : widthFit;
       const fitted = Math.max(zoomMin, Math.min(widthFit, heightFit));
-      zoom = zoomedByUser ? Math.min(requestedZoom, ceiling) : Math.min(fitted, requestedZoom);
+      restingZoom = Math.min(fitted, 1);
+      zoom = zoomedByUser ? Math.min(requestedZoom, ceiling) : restingZoom;
     }
     stage.style.setProperty("--book-scale", zoom);
     stage.style.setProperty("--book-height", book.offsetHeight + "px");
     stage.style.setProperty("--book-lift", liftMargin() + "px");
-    if (!zoomedByUser) restingZoom = zoom;
     // Past the resting size the cover has to leave the page and reach the
     // screen edges. The page otherwise clips it under the header.
     root.classList.toggle("is-book-zoomed", zoomedByUser && zoom > restingZoom + 0.02);
