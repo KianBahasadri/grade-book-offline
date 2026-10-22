@@ -77,7 +77,7 @@ The [GitHub Pages website](https://kianbahasadri.github.io/grade-book-offline/)
 is built from complete published releases. Drag the 3D book with your mouse to
 rotate it, or use the arrow keys while its cover is focused. Scroll over the
 book to zoom in or out; the +/− keys also zoom, and 0 restores its original size.
-The title, dropdowns, and open/close button go behind the book as it expands.
+The header controls and open/close button stay in front of the model as it grows.
 Click to open it and choose a download. The model's text and images cannot be
 selected while dragging. “Other editions” and “About & help” expand smoothly as
 plain text beneath the title. Edition search includes dates, release IDs, and

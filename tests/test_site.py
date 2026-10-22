@@ -241,6 +241,13 @@ See manifest.json for provenance and SHA256SUMS for download checksums.
             with self.assertRaises(RuntimeError):
                 load_releases(REPO)
 
+    def test_book_always_stays_behind_header_and_caption_controls(self):
+        css = (ROOT / "site/style.css").read_text()
+        self.assertNotRegex(css, r"\.is-book-zoomed\s+\.book-stage\s*\{[^}]*z-index")
+        self.assertRegex(css, r"\.book-stage\s*\{[^}]*z-index:\s*0\b")
+        self.assertRegex(css, r"\.site-header\s*\{[^}]*z-index:\s*10\b")
+        self.assertRegex(css, r"\.book-caption\s*\{[^}]*z-index:\s*10\b")
+
 
 if __name__ == "__main__":
     unittest.main()

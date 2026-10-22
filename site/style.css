@@ -67,7 +67,8 @@ svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColo
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .skip-link { position: fixed; top: 8px; left: 8px; z-index: 20; padding: 12px 16px; background: var(--surface-raised); transform: translateY(-150%); }
 .skip-link:focus { transform: none; }
-.site-header { position: relative; z-index: 10; padding: 24px 32px; }
+.site-header { position: relative; z-index: 10; padding: 24px 32px; pointer-events: none; }
+.wordmark, .support-dropdown > summary, .support-panel, .original-link, .page-utilities { pointer-events: auto; }
 .wordmark { display: inline-block; font-size: 26px; line-height: 1.25; font-weight: 600; text-decoration: none; letter-spacing: -.02em; }
 .page-utilities { position: absolute; right: 24px; top: 20px; display: flex; gap: 8px; align-items: center; }
 .icon-button { position: relative; display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; background: transparent; border: 0; color: var(--muted); flex-shrink: 0; }
@@ -78,10 +79,9 @@ svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColo
 .theme-toggle svg { width: 28px; height: 28px; }
 main { padding: 0 24px; }
 html.is-enhanced main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-/* A zoomed book has to paint over the header so its top can leave the screen. */
+/* A zoomed book can leave the stage and reach the top and bottom edges of the screen. */
 html.is-enhanced.is-book-zoomed main,
 html.is-enhanced.is-book-zoomed .book-stage { overflow: visible; }
-html.is-enhanced.is-book-zoomed .book-stage { z-index: 30; }
 .book-stage { --book-width: 384px; --book-height: calc(var(--book-width) * 1.415); --book-scale: 1; --book-detail: 2; position: relative; z-index: 0; display: grid; place-items: center; perspective: 1800px; padding: 40px 0 32px; min-height: max(620px,calc(100svh - 144px)); transition: --book-scale 120ms ease-out; }
 .is-enhanced .book-stage:has(.book.is-rotating) { transition: none; }
 html.is-enhanced .book-stage { flex: 1 1 auto; min-height: 0; }
@@ -127,7 +127,7 @@ html.is-enhanced .book-stage { flex: 1 1 auto; min-height: 0; }
 .page-edges { position: absolute; top: 4px; bottom: 4px; right: 3px; width: 21px; background: linear-gradient(90deg,var(--page-edge-low),var(--page-edge-mid) 45%,var(--page-edge-high)); transform-origin: right; transform: rotateY(-90deg); }
 .book-spine { position: absolute; top: 0; bottom: 0; left: 0; width: 24px; transform-origin: left; transform: rotateY(90deg) translateX(-2px); background: linear-gradient(90deg,#142640,#294575 50%,#172e50); color: #fff; }
 .book-spine span { writing-mode: vertical-rl; font-size: 10px; letter-spacing: .08em; margin: 32px 4px; }
-.book-caption { position: sticky; bottom: 24px; z-index: 1; text-align: center; min-height: 64px; pointer-events: none; }
+.book-caption { position: sticky; bottom: 24px; z-index: 10; text-align: center; min-height: 64px; pointer-events: none; }
 html.is-enhanced .book-caption { position: relative; bottom: auto; flex: none; }
 .open-label { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 20px; font-size: 16px; line-height: 1; font-weight: 500; color: var(--ink); border: 0; outline: none; border-radius: var(--radius-pill); background: var(--canvas); pointer-events: auto; }
 .open-label:hover { color: var(--ink-strong); }
