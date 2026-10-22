@@ -22,13 +22,11 @@ window.createBookRenderer = ({ stage, book, image }) => {
     uniform float perspective;
     uniform vec2 origin;
     uniform vec2 viewport;
-    uniform float centerOffset;
     out vec2 texcoord;
     out vec3 surfaceNormal;
     flat out int surface;
     void main() {
       vec3 p = rotation * position * zoom;
-      p.y += centerOffset;
       float w = 1.0 - p.z / perspective;
       vec2 clip = (origin / viewport * 2.0 - 1.0) * w + p.xy / viewport * 2.0;
       gl_Position = vec4(clip.x, -clip.y, -p.z / perspective, w);
@@ -132,7 +130,7 @@ window.createBookRenderer = ({ stage, book, image }) => {
       gl.deleteShader(fragment);
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error("Book shader link failed");
       gl.useProgram(program);
-      locations = Object.fromEntries(["rotation", "zoom", "perspective", "origin", "viewport", "centerOffset", "cover", "spine", "dark"]
+      locations = Object.fromEntries(["rotation", "zoom", "perspective", "origin", "viewport", "cover", "spine", "dark"]
         .map(name => [name, gl.getUniformLocation(program, name)]));
       buffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -304,13 +302,12 @@ window.createBookRenderer = ({ stage, book, image }) => {
     const rotation = new Float32Array([matrix.m11, matrix.m12, matrix.m13,
       matrix.m21, matrix.m22, matrix.m23, matrix.m31, matrix.m32, matrix.m33]);
     const perspective = parseFloat(stageStyle.perspective) || 1800;
-    const offset = (parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom)) / 2;
     const center = [stage.clientWidth / 2, stage.clientHeight / 2];
     const points = [];
     for (const x of [-width / 2 - 2, width / 2]) for (const y of [-height / 2, height / 2]) for (const z of [-22, 2]) {
       const p = matrix.transformPoint(new DOMPoint(x * zoom, y * zoom, z * zoom));
       const w = 1 - p.z / perspective;
-      points.push([center[0] + p.x / w, center[1] + (p.y + offset) / w]);
+      points.push([center[0] + p.x / w, center[1] + p.y / w]);
     }
     const left = Math.floor(Math.min(...points.map(p => p[0]))) - 2;
     const top = Math.floor(Math.min(...points.map(p => p[1]))) - 2;
@@ -339,7 +336,6 @@ window.createBookRenderer = ({ stage, book, image }) => {
     gl.uniformMatrix3fv(locations.rotation, false, rotation);
     gl.uniform1f(locations.zoom, zoom);
     gl.uniform1f(locations.perspective, perspective);
-    gl.uniform1f(locations.centerOffset, offset);
     gl.uniform2f(locations.origin, center[0] - left, center[1] - top);
     gl.uniform2f(locations.viewport, wide, high);
     gl.uniform1f(locations.dark, document.documentElement.dataset.theme === "dark" ? 1 : 0);

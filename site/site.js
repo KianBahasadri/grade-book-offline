@@ -110,20 +110,20 @@
     if (!height) return 8;
     return (innerHeight + screenPast * 2) / height;
   }
-  // An open page is pinned to the top of the stage once it is taller than the
-  // stage, so the extra height would all hang out the bottom. Shift it up until
-  // the overflow is split across the top and the bottom of the screen.
+  // Shift an overflowing open page so the excess height is split evenly across
+  // the top and bottom of the screen.
   function liftMargin() {
-    if (!zoomedByUser || !book.classList.contains("is-open")) return 0;
+    if (!zoomedByUser || !book.classList.contains("is-open") || book.classList.contains("is-closing")) return 0;
     const scale = zoom || 1;
     const visualHeight = book.offsetHeight * scale;
     if (visualHeight <= innerHeight) return 0;
-    const padTop = parseFloat(getComputedStyle(stage).paddingTop) || 0;
-    const center = stage.getBoundingClientRect().top + padTop + visualHeight / 2;
+    const stageRect = stage.getBoundingClientRect();
+    const center = stageRect.top + stageRect.height / 2;
     return (innerHeight / 2 - center) / scale;
   }
   function zoomCeiling() {
-    return book.classList.contains("is-open") ? openCeiling() : closedCeiling();
+    return book.classList.contains("is-open") && !book.classList.contains("is-closing")
+      ? openCeiling() : closedCeiling();
   }
   function setZoom(value) {
     zoomedByUser = true;
@@ -140,8 +140,6 @@
       .multiply(new DOMMatrix().rotateAxisAngle(0, 1, 0, rotation.y))
       .multiply(new DOMMatrix().rotateAxisAngle(0, 0, 1, tilt));
     const perspective = parseFloat(getComputedStyle(stage).perspective) || 1800;
-    const stageStyle = getComputedStyle(stage);
-    const shift = (parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom)) / 2;
     const centerX = stage.clientWidth / 2;
     const centerY = stage.clientHeight / 2;
     const origin = stage.getBoundingClientRect().top;
@@ -152,7 +150,7 @@
         const w = 1 - point.z / perspective;
         corners.push({
           x: centerX + point.x / w,
-          y: origin + centerY + (point.y + shift) / w,
+          y: origin + centerY + point.y / w,
           edge: y < 0 ? "top" : "bottom"
         });
       }
@@ -168,7 +166,6 @@
       .multiply(new DOMMatrix().rotateAxisAngle(0, 0, 1, tilt));
     const stageStyle = getComputedStyle(stage);
     const perspective = parseFloat(stageStyle.perspective) || 1800;
-    const shift = (parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom)) / 2;
     const centerX = stage.clientWidth / 2;
     const centerY = stage.clientHeight / 2;
     const bounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
@@ -178,7 +175,7 @@
           const point = matrix.transformPoint(new DOMPoint(x * scale, y * scale, z * scale));
           const w = 1 - point.z / perspective;
           const sx = centerX + point.x / w;
-          const sy = centerY + (point.y + shift) / w;
+          const sy = centerY + point.y / w;
           bounds.left = Math.min(bounds.left, sx);
           bounds.top = Math.min(bounds.top, sy);
           bounds.right = Math.max(bounds.right, sx);
@@ -208,7 +205,7 @@
   }
   function fitZoom() {
     const ceiling = zoomCeiling();
-    if (!book.classList.contains("is-open")) {
+    if (!book.classList.contains("is-open") || book.classList.contains("is-closing")) {
       // Resting zoom keeps the whole cover on screen. A deliberate zoom may
       // continue until the top and bottom are just past the screen.
       restingZoom = closedFit(Math.min(1, ceiling));
@@ -223,6 +220,14 @@
       restingZoom = Math.min(fitted, 1);
       zoom = zoomedByUser ? Math.min(requestedZoom, ceiling) : restingZoom;
     }
+    // On a phone the closed cover and the open page want different sizes.
+    // Change scale across the whole turn. A short zoom ease swells the book
+    // and then lets it sink while the page is still moving.
+    const turning = narrowBook.matches && book.classList.contains("is-open")
+      && !book.classList.contains("is-open-flat");
+    stage.style.transition = zoomedByUser || !turning
+      ? ""
+      : "--book-scale 1100ms cubic-bezier(.42,0,.58,1)";
     stage.style.setProperty("--book-scale", zoom);
     stage.style.setProperty("--book-height", book.offsetHeight + "px");
     stage.style.setProperty("--book-lift", liftMargin() + "px");

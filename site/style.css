@@ -135,17 +135,17 @@ html.is-enhanced .book-caption { position: relative; bottom: auto; flex: none; }
 /* Rasterize at the zoomed size, with extra samples on standard-density screens.
    The inverse 3D scale and margins retain the model's displayed size and layout. */
 .is-enhanced .book {
+  position: absolute;
   zoom: calc(var(--book-scale) * var(--book-detail));
   scale: calc(1 / var(--book-detail)) calc(1 / var(--book-detail)) calc(1 / var(--book-detail));
   margin: calc(var(--book-height) * (1 / var(--book-detail) - 1) / 2) calc(var(--book-width) * (1 / var(--book-detail) - 1) / 2);
   transform: translateX(0) rotateX(var(--rotation-x,5deg)) rotateY(var(--rotation-y,-22deg)) rotateZ(-3deg);
   transition: transform 1000ms cubic-bezier(.22,.8,.2,1);
 }
-.is-enhanced .book:not(.is-open) { position: absolute; }
 @media (min-resolution: 2dppx) { .book-stage { --book-detail: 1; } }
 .is-enhanced .front-board { transform: rotateY(0deg); transition: transform 1100ms cubic-bezier(.22,.8,.2,1); }
 .is-enhanced .download-page { display: none; }
-.is-enhanced .book.is-open { --book-detail: 1; transform: translateX(50%) rotateX(0) rotateY(0) rotateZ(0); }
+.is-enhanced .book.is-open { --book-detail: 1; margin-top: var(--book-lift, 0px); transform: translateX(50%) rotateX(0) rotateY(0) rotateZ(0); }
 .is-enhanced .book.is-open .front-board { transform: rotateY(-180deg); }
 .is-enhanced .book.is-open .download-page { display: flex; margin: 0; min-height: calc(var(--book-width) * 1.415); padding: 34px 37px 37px 36px; border: solid transparent; border-width: 3px 5px 3px 0; background: var(--page-right) padding-box, linear-gradient(90deg,#0b1628 0,#233e67 5%,#233e67 96%,#162844 100%) border-box; }
 .is-enhanced .book.is-open .cover-opener { pointer-events: none; }
@@ -261,27 +261,32 @@ details[open] > summary svg { transform: rotate(180deg); }
 @media (max-width: 860px) {
   .book-stage { --book-width: min(340px,calc(100vw - 64px)); min-height: calc(var(--book-height) * var(--book-scale) + 56px); padding-top: 32px; padding-bottom: 24px; }
   html.is-enhanced .book-stage { min-height: 0; }
-  /* Square the book up with the page turn. A phone still will not paint the
-     cover's back face, so the sheet is drawn flat and stays on the hinge. */
+  /* Square the book up with the page turn. A phone will not paint the
+     cover's back face, so the sheet is two faces that meet at the hinge.
+     The book stays in perspective: flattening the leaf squashes the cover
+     into the open page instead of turning it. */
   .is-enhanced .book.is-open:not(.is-open-flat) {
     transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
     transition: transform 1100ms cubic-bezier(.42,0,.58,1);
-    /* Flatten the turning sheet into the book. A preserved 3D layer drops
-       the part of the page nearest the hinge, and that hole flickers. */
-    transform-style: flat;
   }
   .is-enhanced .book.is-open.is-closing:not(.is-open-flat) {
     animation: mobile-book-close 1100ms linear both;
   }
-  .is-enhanced .book.is-open:not(.is-open-flat) { zoom: 1; }
   .is-enhanced .book.is-open-flat { justify-self: center; margin: 0; margin-top: var(--book-lift, 0px); left: auto; }
-  .front-board { height: calc(var(--book-width) * 1.415); }
+  .book, .front-board { min-height: max(490px,calc(var(--book-width) * 1.415)); }
   .is-enhanced .book { transform: rotateX(var(--rotation-x,5deg)) rotateY(var(--rotation-y,-22deg)) rotateZ(-2deg); }
   /* The inside page is the cover after it passes the hinge, not a second page
      opening beside it. It stays edge-on until the cover gets there. */
   .is-enhanced .book.is-open .front-board {
     transform: none; height: auto; bottom: 0; transition: none;
   }
+  /* The closed book's thickness is a separate 3D layer. During the turn it
+     sticks out past the page, so only the leaf and the open page stay visible. */
+  .is-enhanced .book.is-open .back-board,
+  .is-enhanced .book.is-open .page-edges,
+  .is-enhanced .book.is-open .page-top,
+  .is-enhanced .book.is-open .page-bottom,
+  .is-enhanced .book.is-open::before { visibility: hidden; }
   .is-enhanced .book.is-open .cover-front { transform-origin: left center; transform: rotateY(-96deg); }
   .is-enhanced .book.is-open:not(.is-open-flat) .cover-front { animation: mobile-leaf-cover 1100ms linear both; }
   .is-enhanced .book.is-open.is-closing:not(.is-open-flat) .cover-front { animation: mobile-leaf-cover-close 1100ms linear both; }

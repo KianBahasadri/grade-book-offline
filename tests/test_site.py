@@ -248,6 +248,21 @@ See manifest.json for provenance and SHA256SUMS for download checksums.
         self.assertRegex(css, r"\.site-header\s*\{[^}]*z-index:\s*10\b")
         self.assertRegex(css, r"\.book-caption\s*\{[^}]*z-index:\s*10\b")
 
+    def test_book_opening_and_closing_pose_matches_settled_position(self):
+        css = (ROOT / "site/style.css").read_text()
+        js = (ROOT / "site/site.js").read_text()
+        renderer = (ROOT / "site/book-renderer.js").read_text()
+        self.assertRegex(css, r"\.is-enhanced\s+\.book\s*\{[^}]*position:\s*absolute\b")
+        self.assertNotIn(".is-enhanced .book:not(.is-open) { position: absolute; }", css)
+        self.assertNotIn(".is-enhanced .book.is-open:not(.is-open-flat) { zoom: 1; }", css)
+        self.assertNotRegex(
+            css,
+            r"\.is-enhanced \.book\.is-open:not\(\.is-open-flat\) \{[^}]*transform-style:\s*flat")
+        self.assertIn("--book-scale 1100ms cubic-bezier(.42,0,.58,1)", js)
+        self.assertRegex(css, r"\.is-enhanced\s+\.book\.is-open\s*\{[^}]*margin-top:\s*var\(--book-lift,\s*0px\)")
+        self.assertNotIn("centerOffset", renderer)
+        self.assertIn('book.classList.contains("is-closing")', js)
+
 
 if __name__ == "__main__":
     unittest.main()
