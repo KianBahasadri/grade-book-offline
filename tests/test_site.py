@@ -263,6 +263,32 @@ See manifest.json for provenance and SHA256SUMS for download checksums.
         self.assertNotIn("centerOffset", renderer)
         self.assertIn('book.classList.contains("is-closing")', js)
 
+    def test_seo_metadata_structured_data_and_sitemap(self):
+        current = release()
+        older = release("edition-2026-10-13-bbbb-2.1", "2026-10-13T18:00:00Z")
+        editions = editions_from_releases([older, current], current["tag_name"], REPO)
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "website"
+            build_site(editions, output, BASE_URL, REPO)
+            home = (output / "index.html").read_text()
+            earlier = (output / "editions" / older["tag_name"] / "index.html").read_text()
+            self.assertIn('<meta name="robots" content="index, follow">', home)
+            self.assertIn('<meta name="robots" content="noindex, follow">', earlier)
+            self.assertIn("Grading of Recommendations, Assessment, Development and Evaluation", home)
+            self.assertIn('<meta property="og:image" content="https://kianbahasadri.github.io/grade-book-offline/official-cover-', home)
+            self.assertIn('<meta name="twitter:card" content="summary_large_image">', home)
+            ld_start = home.index('<script type="application/ld+json">') + len('<script type="application/ld+json">')
+            ld_end = home.index("</script>", ld_start)
+            schema = json.loads(home[ld_start:ld_end])
+            self.assertEqual(schema["@type"], "Book")
+            self.assertEqual(schema["name"], "The GRADE Book")
+            self.assertEqual(len(schema["encoding"]), len(ASSETS))
+            sitemap = (output / "sitemap.xml").read_text()
+            self.assertIn(f"<loc>{BASE_URL}</loc>", sitemap)
+            self.assertIn("<lastmod>2026-10-20</lastmod>", sitemap)
+            robots = (output / "robots.txt").read_text()
+            self.assertIn(f"Sitemap: {BASE_URL}sitemap.xml", robots)
+
 
 if __name__ == "__main__":
     unittest.main()

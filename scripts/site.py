@@ -28,6 +28,13 @@ ASSETS = {
     "pdf": "grade-book.pdf", "epub": "grade-book.epub", "html": "grade-book-html.zip",
     "docx": "grade-book.docx", "txt": "grade-book.txt",
 }
+MIME_TYPES = {
+    "pdf": "application/pdf",
+    "epub": "application/epub+zip",
+    "html": "application/zip",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "txt": "text/plain",
+}
 DOWNLOAD_ICON = '<svg aria-hidden="true" focusable="false"><use href="#icon-download"></use></svg>'
 
 
@@ -172,8 +179,64 @@ def brief_notes(notes):
     return "No release notes were provided."
 
 
+def structured_data(selected, canonical, cover_url, repo):
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Book",
+        "name": "The GRADE Book",
+        "alternateName": [
+            "Grading of Recommendations, Assessment, Development and Evaluation",
+            "GRADE Book",
+            "GRADE Handbook",
+            "GRADEpro Book",
+        ],
+        "description": (
+            "Offline editions of The GRADE Book (Grading of Recommendations, Assessment, "
+            "Development and Evaluation) in PDF, EPUB, offline HTML website, Word (DOCX), "
+            "and plain text formats."
+        ),
+        "url": canonical,
+        "sameAs": "https://book.gradepro.org/",
+        "isBasedOn": "https://book.gradepro.org/",
+        "inLanguage": "en",
+        "isAccessibleForFree": True,
+        "license": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+        "bookEdition": selected["label"],
+        "datePublished": selected["capture_date"],
+        "dateModified": selected["timestamp"],
+        "image": cover_url,
+        "author": {
+            "@type": "Organization",
+            "name": "GRADE Working Group",
+            "url": "https://www.gradeworkinggroup.org/",
+        },
+        "editor": [
+            {"@type": "Person", "name": "Ignacio Neumann"},
+            {"@type": "Person", "name": "Holger J. Schünemann"},
+        ],
+        "maintainer": {
+            "@type": "Person",
+            "name": "Kian Bahasadri",
+            "url": "https://www.linkedin.com/in/kian-bahasadri/",
+            "sameAs": [f"https://github.com/{repo}"],
+        },
+        "encoding": [
+            {
+                "@type": "MediaObject",
+                "name": f"The GRADE Book ({title})",
+                "description": description,
+                "encodingFormat": MIME_TYPES[kind],
+                "contentUrl": selected["assets"][kind]["url"],
+                "contentSize": size_label(selected["assets"][kind]["size"]),
+            }
+            for kind, title, description, _ in FORMATS
+        ],
+    }
+    return json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+
+
 def render_page(editions, selected, prefix, canonical, repo, cover_file,
-                cover_size=(866, 1174), cover_flat=False):
+                cover_size=(866, 1174), cover_flat=False, base_url=BASE_URL):
     escape = html.escape
     links = []
     for kind, title, description, action in FORMATS:
@@ -211,12 +274,26 @@ def render_page(editions, selected, prefix, canonical, repo, cover_file,
     notice = "" if selected["latest"] else (
         '<p class="edition-notice">You’re viewing an earlier edition.'
         f' <a href="{prefix}index.html#downloads">Get the latest edition</a>.</p>')
+    cover_url = base_url.rstrip("/") + "/" + cover_file
+    is_root = prefix == "./"
+    description = (
+        "Download The GRADE Book (Grading of Recommendations, Assessment, Development and Evaluation) "
+        "for offline reading. Free PDF, EPUB, offline website, Word (DOCX), and plain text editions "
+        "of the GRADE handbook."
+        if selected["latest"] else
+        f"Download the {selected['label']} offline edition of The GRADE Book in PDF, EPUB, "
+        "offline website, Word (DOCX), and plain text formats."
+    )
     values = {
         "PREFIX": prefix, "CANONICAL": escape(canonical, quote=True),
         "ASSET_VERSION": hashlib.sha256(b"".join((ROOT / "site" / name).read_bytes()
             for name in ("style.css", "book-renderer.js", "site.js", "favicon.svg"))).hexdigest()[:12],
-        "PAGE_TITLE": "The GRADE Book — download for offline reading" if selected["latest"]
-        else f"The GRADE Book — {selected['label']} edition",
+        "PAGE_TITLE": "The GRADE Book — Offline Download (PDF, EPUB, HTML, Word)" if selected["latest"]
+        else f"The GRADE Book — {selected['label']} edition (Offline Download)",
+        "META_DESCRIPTION": escape(description, quote=True),
+        "ROBOTS": "index, follow" if is_root else "noindex, follow",
+        "COVER_URL": escape(cover_url, quote=True),
+        "STRUCTURED_DATA": structured_data(selected, canonical, cover_url, repo),
         "EDITION_STATUS": "Latest edition" if selected["latest"] else "Earlier edition",
         "EDITION_DATE": escape(selected["label"]), "COVER_FILE": cover_file,
         "COVER_WIDTH": str(cover_size[0]), "COVER_HEIGHT": str(cover_size[1]),
@@ -282,14 +359,23 @@ def build_site(editions, output, base_url, repo, cover=None):
     base_url = base_url.rstrip("/") + "/"
     latest = next(item for item in editions if item["latest"])
     (output / "index.html").write_text(
-        render_page(editions, latest, "./", base_url, repo, cover_file, cover_size, cover_flat))
+        render_page(editions, latest, "./", base_url, repo, cover_file, cover_size, cover_flat, base_url))
     # Keep a permanent page for every edition, including today's latest.
     for edition in editions:
         destination = output / "editions" / edition["tag"]
         destination.mkdir(parents=True)
         canonical = base_url + f"editions/{edition['tag']}/"
         (destination / "index.html").write_text(
-            render_page(editions, edition, "../../", canonical, repo, cover_file, cover_size, cover_flat))
+            render_page(editions, edition, "../../", canonical, repo, cover_file, cover_size, cover_flat, base_url))
+    sitemap = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"  <url>\n    <loc>{html.escape(base_url)}</loc>\n"
+        f"    <lastmod>{latest['capture_date']}</lastmod>\n  </url>\n"
+        "</urlset>\n"
+    )
+    (output / "sitemap.xml").write_text(sitemap)
+    (output / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {base_url}sitemap.xml\n")
     (output / ".nojekyll").touch()
     print(f"Built download library with {len(editions)} edition(s): {output}")
 
