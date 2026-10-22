@@ -32,6 +32,24 @@
   --page-block: #0e1418;
   --page-edge-low: #0c1114; --page-edge-mid: #161e24; --page-edge-high: #0e1418;
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #080b0d; --surface: #11171b; --surface-raised: #151d21;
+    --ink: #dbe3e6; --ink-strong: #f3f6f5; --muted: #849094; --faint: #566166;
+    --line: #263137; --line-strong: #3a4a51; --action-primary: #26343a;
+    --action-primary-hover: #314249; --focus: #9cc8ff;
+    --overlay-shadow: 0 16px 40px rgba(0,0,0,.42);
+    --page-right: linear-gradient(90deg,#070a0d 0,#11171b 5%,#11171b 96%,#0c1114 100%);
+    --page-left: linear-gradient(90deg,#11171b 90%,#0c1114 98%,#070a0d);
+    --page-hover: rgba(255,255,255,.04); --page-rim: rgba(255,255,255,.06);
+    --page-block: #0e1418;
+    --page-edge-low: #0c1114; --page-edge-mid: #161e24; --page-edge-high: #0e1418;
+  }
+  :root:not([data-theme="light"]) .edition-notice { color: #e0b04f; }
+  :root:not([data-theme="light"]) #date-error { color: #df7e78; }
+  :root:not([data-theme="light"]) .date-fields input[aria-invalid="true"] { border-color: #df7e78; }
+}
 *, *::before, *::after { box-sizing: border-box; }
 html { scrollbar-gutter: stable; }
 html.is-enhanced, html.is-enhanced body { height: 100dvh; overflow: hidden; overscroll-behavior: none; }

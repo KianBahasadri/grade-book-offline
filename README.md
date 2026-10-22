@@ -83,8 +83,9 @@ selected while dragging. “Other editions” and “About & help” expand smoo
 plain text beneath the title. Edition search includes dates, release IDs, and
 release notes, plus date filters and newest/oldest sorting.
 The layout adapts to phones, supports keyboard navigation and reduced motion,
-and provides light and dark themes. Downloads remain visible without JavaScript.
-Each edition has a permanent page with links to its own files.
+and provides light and dark themes that default to the system setting.
+Downloads remain visible without JavaScript. Each edition has a permanent page
+with links to its own files.
 
 `site/` holds the HTML template, styles, book interaction, and locally hosted font.
 `scripts/site.py` generates the website using the GitHub CLI to read release

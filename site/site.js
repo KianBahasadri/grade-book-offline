@@ -586,7 +586,8 @@
   document.addEventListener("focusin", dismissSupport);
 
   const themeButton = document.querySelector(".theme-toggle");
-  function setTheme(theme) {
+  const systemDark = matchMedia("(prefers-color-scheme: dark)");
+  function setTheme(theme, persist = false) {
     root.dataset.theme = theme;
     const label = `Switch to ${theme === "dark" ? "light" : "dark"} theme`;
     themeButton.setAttribute("aria-label", label);
@@ -594,12 +595,23 @@
     themeButton.querySelector("use").setAttribute("href", theme === "dark" ? "#icon-sun" : "#icon-moon");
     document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#080b0d" : "#ecefec";
     renderer?.invalidate();
-    try { localStorage.setItem("grade-book-theme", theme); } catch { /* Storage may be disabled. */ }
+    if (persist) {
+      try { localStorage.setItem("grade-book-theme", theme); } catch { /* Storage may be disabled. */ }
+    }
   }
-  let savedTheme;
-  try { savedTheme = localStorage.getItem("grade-book-theme"); } catch { /* Use light paper by default. */ }
-  setTheme(savedTheme === "dark" ? "dark" : "light");
-  const toggleTheme = () => setTheme(root.dataset.theme === "dark" ? "light" : "dark");
+  function savedTheme() {
+    try {
+      const value = localStorage.getItem("grade-book-theme");
+      return value === "dark" || value === "light" ? value : null;
+    } catch {
+      return null;
+    }
+  }
+  setTheme(savedTheme() ?? (systemDark.matches ? "dark" : "light"));
+  systemDark.addEventListener("change", () => {
+    if (!savedTheme()) setTheme(systemDark.matches ? "dark" : "light");
+  });
+  const toggleTheme = () => setTheme(root.dataset.theme === "dark" ? "light" : "dark", true);
   themeButton.addEventListener("click", toggleTheme);
 
 
