@@ -592,6 +592,7 @@
     themeButton.dataset.tooltip = label;
     themeButton.querySelector("use").setAttribute("href", theme === "dark" ? "#icon-sun" : "#icon-moon");
     document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#080b0d" : "#ecefec";
+    renderer?.invalidate();
     try { localStorage.setItem("grade-book-theme", theme); } catch { /* Storage may be disabled. */ }
   }
   let savedTheme;

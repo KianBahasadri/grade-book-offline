@@ -40,6 +40,7 @@ window.createBookRenderer = ({ stage, book, image }) => {
     precision highp float;
     uniform sampler2D cover;
     uniform sampler2D spine;
+    uniform float dark;
     in vec2 texcoord;
     in vec3 surfaceNormal;
     flat in int surface;
@@ -55,11 +56,13 @@ window.createBookRenderer = ({ stage, book, image }) => {
         rgb = rgb * groove + lip;
       } else if (surface == 2) {
         float depth = texcoord.y;
-        rgb = mix(vec3(.87, .865, .83), vec3(.98, .975, .95), sin(depth * 3.14159));
+        vec3 edgeLow = mix(vec3(.87, .865, .83), vec3(.075, .098, .114), dark);
+        vec3 edgeHigh = mix(vec3(.98, .975, .95), vec3(.125, .165, .192), dark);
+        rgb = mix(edgeLow, edgeHigh, sin(depth * 3.14159));
         // Filter the page lines analytically, including when viewed edge-on.
         float frequency = 36.0;
         float detail = 1.0 - smoothstep(.15, .65, fwidth(depth * frequency));
-        rgb -= .018 * detail * (.5 + .5 * cos(depth * frequency * 6.28318));
+        rgb -= mix(.018, .012, dark) * detail * (.5 + .5 * cos(depth * frequency * 6.28318));
         rgb *= .90 + .10 * smoothstep(0.0, .05, texcoord.x);
       } else if (surface == 3) {
         rgb = texture(spine, texcoord).rgb;
@@ -129,7 +132,7 @@ window.createBookRenderer = ({ stage, book, image }) => {
       gl.deleteShader(fragment);
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error("Book shader link failed");
       gl.useProgram(program);
-      locations = Object.fromEntries(["rotation", "zoom", "perspective", "origin", "viewport", "centerOffset", "cover", "spine"]
+      locations = Object.fromEntries(["rotation", "zoom", "perspective", "origin", "viewport", "centerOffset", "cover", "spine", "dark"]
         .map(name => [name, gl.getUniformLocation(program, name)]));
       buffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -339,6 +342,7 @@ window.createBookRenderer = ({ stage, book, image }) => {
     gl.uniform1f(locations.centerOffset, offset);
     gl.uniform2f(locations.origin, center[0] - left, center[1] - top);
     gl.uniform2f(locations.viewport, wide, high);
+    gl.uniform1f(locations.dark, document.documentElement.dataset.theme === "dark" ? 1 : 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, coverTexture);
     gl.activeTexture(gl.TEXTURE1);
